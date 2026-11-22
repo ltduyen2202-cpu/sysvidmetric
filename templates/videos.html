@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Quản lý Video{% endblock %}
+{% block page_title %}Quản lý Video{% endblock %}
+{% block page_subtitle %}Danh sách video đa nền tảng · {{ pagination.total }} video{% endblock %}
+
+{% block header_actions %}
+  {% if user and user.is_manager() %}
+  <a href="{{ url_for('video_import') }}" class="btn btn-secondary btn-sm">
+    <i class="fa-solid fa-file-excel"></i> Import Excel
+  </a>
+  <a href="{{ url_for('video_add') }}" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-plus"></i> Thêm video
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Filter bar -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body" style="padding:14px 20px">
+    <form method="GET" class="search-bar" style="flex-wrap:wrap;gap:8px">
+      <div class="search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" name="q" value="{{ q }}" placeholder="Tìm kiếm video..."/>
+      </div>
+      <select name="platform" class="form-control" style="width:160px">
+        <option value="">Tất cả nền tảng</option>
+        {% for p in platforms %}
+        <option value="{{ p.id }}" {% if plat_id|string == p.id|string %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="status" class="form-control" style="width:140px">
+        <option value="">Tất cả trạng thái</option>
+        {% for val, label in video_statuses %}
+        <option value="{{ val }}" {% if status_f == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="campaign" class="form-control" style="width:170px">
+        <option value="">Tất cả chiến dịch</option>
+        {% for c in campaigns %}
+        <option value="{{ c.id }}" {% if camp_f|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- Lọc thời gian nhanh -->
+      <select name="period" id="periodSelect" class="form-control" style="width:140px"
+              onchange="toggleVideoCustom(this.value)">
+        <option value="" {% if not period %}selected{% endif %}>Tất cả thời gian</option>
+        <option value="today"   {% if period=='today'   %}selected{% endif %}>Hôm nay</option>
+        <option value="week"    {% if period=='week'    %}selected{% endif %}>Tuần này</option>
+        <option value="month"   {% if period=='month'   %}selected{% endif %}>Tháng này</option>
+        <option value="quarter" {% if period=='quarter' %}selected{% endif %}>Quý này</option>
+        <option value="year"    {% if period=='year'    %}selected{% endif %}>Năm nay</option>
+        <option value="custom"  {% if period=='custom'  %}selected{% endif %}>Tùy chỉnh</option>
+      </select>
+
+      <!-- Custom date -->
+      <div id="videoCustomRange"
+           style="display:{% if period=='custom' %}flex{% else %}none{% endif %};
+                  align-items:center;gap:6px">
+        <input type="date" name="date_from" value="{{ date_from }}"
+               class="form-control" style="width:145px;padding:7px 10px"/>
+        <span style="color:var(--text-muted)">—</span>
+        <input type="date" name="date_to" value="{{ date_to }}"
+               class="form-control" style="width:145px;padding:7px 10px"/>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-filter"></i> Lọc</button>
+      <a href="{{ url_for('videos') }}" class="btn btn-secondary btn-sm"><i class="fa-solid fa-rotate"></i> Reset</a>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tiêu đề video</th>
+          <th>Nền tảng</th>
+          <th>Chiến dịch</th>
+          <th class="num">Lượt xem</th>
+          <th class="num">Tương tác</th>
+          <th class="num">CTR%</th>
+          <th class="num">Đơn hàng</th>
+          <th class="num">Doanh thu</th>
+          <th>Trạng thái</th>
+          <th>Hiệu quả</th>
+          <th>Ngày đăng</th>
+          <th style="text-align:center">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in videos %}
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px">{{ (pagination.page-1)*10 + loop.index }}</td>
+          <td>
+            <a href="{{ url_for('video_detail', vid=v.id) }}"
+               style="font-weight:600;color:var(--text);text-decoration:none;display:block;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+               title="{{ v.title }}">{{ v.title }}</a>
+            {% if v.tags %}
+            <div style="margin-top:3px">
+              {% for tag in v.tags.split(',')[:3] %}
+              <span class="tag">{{ tag.strip() }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </td>
+          <td>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap">
+              <span style="width:9px;height:9px;border-radius:50%;background:{{v.platform.color if v.platform else '#999'}};flex-shrink:0"></span>
+              {{ v.platform.name if v.platform else '—' }}
+            </span>
+          </td>
+          <td>
+            <span style="font-size:12px;color:var(--text-muted)">
+              {{ v.campaign.name[:20] ~ '...' if v.campaign and v.campaign.name|length > 20 else (v.campaign.name if v.campaign else '—') }}
+            </span>
+          </td>
+          <td class="num">{{ '{:,}'.format(v.views).replace(',','.') }}</td>
+          <td class="num">
+            {{ '{:,}'.format(v.likes+v.comments+v.shares+v.saves).replace(',','.') }}
+            <div style="font-size:10px;color:var(--text-muted)">{{ v.engagement_rate }}%</div>
+          </td>
+          <td class="num">{{ v.ctr }}%</td>
+          <td class="num">{{ '{:,}'.format(v.orders).replace(',','.') }}</td>
+          <td class="num">{{ '{:,.0f}'.format(v.revenue).replace(',','.') }} đ</td>
+          <td>
+            {% if v.status == 'published' %}
+              <span class="badge badge-success">Đã đăng</span>
+            {% elif v.status == 'draft' %}
+              <span class="badge badge-warning">Bản nháp</span>
+            {% else %}
+              <span class="badge badge-secondary">Lưu trữ</span>
+            {% endif %}
+          </td>
+          <td>
+            {% set grade = v.performance_grade %}
+            {% set score = v.performance_score %}
+            <div style="display:flex;align-items:center;gap:5px">
+              <span class="badge badge-{{ grade[1] }}" style="font-size:11px">
+                {{ grade[2] }} {{ grade[0] }}
+              </span>
+              <span style="font-size:10px;color:var(--text-muted)">{{ score }}/100</span>
+            </div>
+          </td>
+          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">
+            {{ v.published_at.strftime('%d/%m/%Y') if v.published_at else '—' }}
+          </td>
+          <td style="text-align:center;white-space:nowrap">
+            <a href="{{ url_for('video_detail', vid=v.id) }}" class="btn btn-icon btn-xs" title="Xem chi tiết">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+            {% if user and user.is_manager() %}
+            <a href="{{ url_for('video_edit', vid=v.id) }}" class="btn btn-icon btn-xs" title="Chỉnh sửa">
+              <i class="fa-solid fa-pen"></i>
+            </a>
+            <form method="POST" action="{{ url_for('video_delete', vid=v.id) }}" style="display:inline"
+                  data-confirm="Bạn có chắc muốn xóa video '{{ v.title }}'?">
+              <button class="btn btn-icon btn-xs" style="background:#FEE2E2;color:#B91C1C;border-color:#FECACA" title="Xóa">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="12">
+            <div class="empty-state">
+              <i class="fa-solid fa-film"></i>
+              <h4>Không tìm thấy video</h4>
+              <p>Thử thay đổi bộ lọc {% if user and user.is_manager() %}hoặc <a href="{{ url_for('video_add') }}">thêm video mới</a>{% endif %}</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if pagination.pages > 1 %}
+  <div style="padding:0 20px 16px">
+    <div class="pagination">
+      {% if pagination.has_prev %}
+      <div class="page-item">
+        <a href="{{ url_for('videos', page=pagination.prev_num, q=q, platform=plat_id, status=status_f, campaign=camp_f) }}">
+          <i class="fa-solid fa-chevron-left" style="font-size:11px"></i>
+        </a>
+      </div>
+      {% endif %}
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+        <div class="page-item {% if p == pagination.page %}active{% endif %}">
+          <a href="{{ url_for('videos', page=p, q=q, platform=plat_id, status=status_f, campaign=camp_f) }}">{{ p }}</a>
+        </div>
+        {% else %}
+        <span style="padding:0 4px;color:var(--text-muted)">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if pagination.has_next %}
+      <div class="page-item">
+        <a href="{{ url_for('videos', page=pagination.next_num, q=q, platform=plat_id, status=status_f, campaign=camp_f) }}">
+          <i class="fa-solid fa-chevron-right" style="font-size:11px"></i>
+        </a>
+      </div>
+      {% endif %}
+    </div>
+    <div style="text-align:center;font-size:12px;color:var(--text-muted)">
+      Hiển thị {{ (pagination.page-1)*10+1 }}–{{ [(pagination.page*10), pagination.total]|min }}
+      / {{ pagination.total }} video
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleVideoCustom(val) {
+  var el = document.getElementById('videoCustomRange');
+  el.style.display = val === 'custom' ? 'flex' : 'none';
+}
+</script>
+{% endblock %}

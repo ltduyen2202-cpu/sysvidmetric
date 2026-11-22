@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_subtitle %}Quản lý Sản phẩm{% endblock %}
+
+{% block content %}
+<div style="max-width:720px">
+<form method="POST">
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-box" style="color:var(--primary);margin-right:6px"></i>Thông tin sản phẩm</h3>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Tên sản phẩm <span class="req">*</span></label>
+        <input type="text" name="name" class="form-control" required
+               value="{{ product.name if product else '' }}" placeholder="Tên sản phẩm..."/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mô tả</label>
+        <textarea name="description" class="form-control" rows="3">{{ product.description if product else '' }}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Giá bán (đ) <span class="req">*</span></label>
+          <input type="number" name="price" class="form-control" step="1000" min="0" required
+                 value="{{ product.price if product else '0' }}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Danh mục</label>
+          <select name="category_id" class="form-control">
+            <option value="">-- Chọn danh mục --</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}" {% if product and product.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">SKU</label>
+          <input type="text" name="sku" class="form-control"
+                 value="{{ product.sku if product else '' }}" placeholder="SKU001"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tồn kho</label>
+          <input type="number" name="stock" class="form-control" min="0"
+                 value="{{ product.stock if product else '0' }}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trạng thái</label>
+          <select name="status" class="form-control">
+            <option value="active" {% if not product or product.status == 'active' %}selected{% endif %}>Còn hàng</option>
+            <option value="inactive" {% if product and product.status == 'inactive' %}selected{% endif %}>Ngừng bán</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px">
+    <button type="submit" class="btn btn-primary">
+      <i class="fa-solid fa-floppy-disk"></i>
+      {{ 'Cập nhật sản phẩm' if product else 'Thêm sản phẩm' }}
+    </button>
+    <a href="{{ url_for('products') }}" class="btn btn-secondary">
+      <i class="fa-solid fa-xmark"></i> Hủy
+    </a>
+  </div>
+</form>
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Chiến dịch Marketing{% endblock %}
+{% block page_title %}Chiến dịch Marketing{% endblock %}
+{% block page_subtitle %}Quản lý các chiến dịch quảng bá sản phẩm qua Short Video{% endblock %}
+
+{% block header_actions %}
+  {% if user and user.is_manager() %}
+  <a href="{{ url_for('campaign_add') }}" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-plus"></i> Thêm chiến dịch
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Filter -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body" style="padding:12px 20px">
+    <form method="GET" class="search-bar">
+      <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Lọc trạng thái:</span>
+      {% for val, label in campaign_statuses %}
+      <a href="{{ url_for('campaigns', status=val) }}"
+         class="btn btn-sm {% if status_f == val %}btn-primary{% else %}btn-secondary{% endif %}">
+        {{ label }}
+      </a>
+      {% endfor %}
+      <a href="{{ url_for('campaigns') }}" class="btn btn-secondary btn-sm">Tất cả</a>
+    </form>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px">
+  {% for c in campaigns %}
+  <div class="card" style="transition:var(--transition)" onmouseover="this.style.boxShadow='var(--shadow)'" onmouseout="this.style.boxShadow=''">
+    <div class="card-header">
+      <div style="flex:1;min-width:0">
+        <h3 style="margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</h3>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+          <i class="fa-regular fa-calendar"></i>
+          {{ c.start_date.strftime('%d/%m/%Y') if c.start_date else '?' }} —
+          {{ c.end_date.strftime('%d/%m/%Y') if c.end_date else '?' }}
+        </div>
+      </div>
+      {% if c.status == 'running' %}
+        <span class="badge badge-success">Đang chạy</span>
+      {% elif c.status == 'planned' %}
+        <span class="badge badge-info">Lên kế hoạch</span>
+      {% else %}
+        <span class="badge badge-secondary">Kết thúc</span>
+      {% endif %}
+    </div>
+    <div class="card-body" style="padding:16px 20px">
+      {% if c.description %}
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">{{ c.description }}</p>
+      {% endif %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="background:#F8FAFC;border-radius:8px;padding:10px">
+          <div style="font-size:11px;color:var(--text-muted)">Ngân sách</div>
+          <div style="font-size:14px;font-weight:700">{{ '{:,.0f}'.format(c.budget).replace(',','.') }} đ</div>
+        </div>
+        <div style="background:#F8FAFC;border-radius:8px;padding:10px">
+          <div style="font-size:11px;color:var(--text-muted)">Số video</div>
+          <div style="font-size:14px;font-weight:700">{{ c.videos.count() }}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="{{ url_for('campaign_detail', cid=c.id) }}" class="btn btn-ghost btn-sm">
+          <i class="fa-solid fa-eye"></i> Chi tiết
+        </a>
+        {% if user and user.is_manager() %}
+        <a href="{{ url_for('campaign_edit', cid=c.id) }}" class="btn btn-secondary btn-sm">
+          <i class="fa-solid fa-pen"></i> Sửa
+        </a>
+        <form method="POST" action="{{ url_for('campaign_delete', cid=c.id) }}" style="display:inline"
+              data-confirm="Xóa chiến dịch '{{ c.name }}'?">
+          <button class="btn btn-sm" style="background:#FEE2E2;color:#B91C1C;border:1px solid #FECACA">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="grid-column:1/-1">
+    <div class="empty-state">
+      <i class="fa-solid fa-bullhorn"></i>
+      <h4>Chưa có chiến dịch nào</h4>
+      <p><a href="{{ url_for('campaign_add') }}">Tạo chiến dịch đầu tiên</a></p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

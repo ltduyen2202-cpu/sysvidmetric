@@ -1,0 +1,576 @@
+{% extends "base.html" %}
+{% block title %}Phân tích hiệu quả{% endblock %}
+{% block page_title %}Phân tích hiệu quả{% endblock %}
+{% block page_subtitle %}
+  {% if selected_plat_name %}{{ selected_plat_name }}{% else %}Tất cả nền tảng{% endif %}
+  · {{ date_from_disp }} — {{ date_to_disp }}
+{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('analytics_export', period=period, platform=plat_filter, date_from=date_from, date_to=date_to) }}"
+   class="btn btn-success btn-sm">
+  <i class="fa-solid fa-file-excel"></i> Xuất Excel
+</a>
+{% endblock %}
+
+{% block content %}
+
+{# ===================== BỘ LỌC ===================== #}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body" style="padding:14px 20px">
+    <form method="GET" id="filterForm">
+
+      {# --- Lọc nền tảng --- #}
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted);white-space:nowrap">
+          <i class="fa-solid fa-layer-group"></i> Nền tảng:
+        </span>
+        <a href="{{ url_for('analytics', period=period, date_from=date_from, date_to=date_to) }}"
+           class="btn btn-sm {% if not plat_filter %}btn-primary{% else %}btn-secondary{% endif %}">
+          Tất cả
+        </a>
+        {% for plat in all_platforms %}
+        <a href="{{ url_for('analytics', period=period, platform=plat.id, date_from=date_from, date_to=date_to) }}"
+           class="btn btn-sm"
+           style="{% if plat_filter|string == plat.id|string %}background:{{plat.color}};color:#fff;border-color:{{plat.color}}{% endif %}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{plat.color}};display:inline-block;margin-right:4px"></span>
+          {{ plat.name }}
+        </a>
+        {% endfor %}
+      </div>
+
+      {# --- Lọc thời gian --- #}
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;
+                  padding-top:10px;border-top:1px solid var(--border)">
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted);white-space:nowrap">
+          <i class="fa-solid fa-calendar-days"></i> Thời gian:
+        </span>
+        {% for val, lbl in [('today','Hôm nay'),('week','Tuần này'),('month','Tháng này'),('quarter','Quý này'),('year','Năm nay')] %}
+        <a href="{{ url_for('analytics', period=val, platform=plat_filter, date_from=date_from, date_to=date_to) }}"
+           class="btn btn-sm {% if period==val %}btn-primary{% else %}btn-secondary{% endif %}">{{ lbl }}</a>
+        {% endfor %}
+        <button type="button" onclick="toggleCustom()"
+                class="btn btn-sm {% if period=='custom' %}btn-primary{% else %}btn-secondary{% endif %}">
+          <i class="fa-solid fa-sliders"></i> Tùy chỉnh
+        </button>
+        <div id="customRange" style="display:{% if period=='custom' %}flex{% else %}none{% endif %};align-items:center;gap:8px;flex-wrap:wrap">
+          <input type="date" name="date_from" value="{{ date_from }}" class="form-control" style="width:150px;padding:6px 10px"/>
+          <span style="color:var(--text-muted)">—</span>
+          <input type="date" name="date_to" value="{{ date_to }}" class="form-control" style="width:150px;padding:6px 10px"/>
+          <input type="hidden" name="period" value="custom"/>
+          <input type="hidden" name="platform" value="{{ plat_filter }}"/>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-filter"></i> Áp dụng</button>
+        </div>
+        <span style="margin-left:auto;font-size:12px;color:var(--text-muted)">
+          <i class="fa-regular fa-calendar"></i> {{ date_from_disp }} — {{ date_to_disp }}
+        </span>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ===================== KPI ===================== #}
+<div class="stats-grid" style="margin-bottom:20px">
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Tổng lượt xem</span>
+      <div class="stat-card-icon blue"><i class="fa-solid fa-eye"></i></div>
+    </div>
+    <div class="stat-card-value">
+      {% if total_views >= 1000000 %}{{ '%.1f'|format(total_views/1000000) }}M
+      {% elif total_views >= 1000 %}{{ '%.1f'|format(total_views/1000) }}K
+      {% else %}{{ total_views }}{% endif %}
+    </div>
+    <div class="stat-card-sub">{{ selected_plat_name if selected_plat_name else 'Tất cả nền tảng' }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Tổng đơn hàng</span>
+      <div class="stat-card-icon green"><i class="fa-solid fa-cart-shopping"></i></div>
+    </div>
+    <div class="stat-card-value">{{ '{:,}'.format(total_orders).replace(',','.') }}</div>
+    <div class="stat-card-sub">Từ Short Video</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Tổng doanh thu</span>
+      <div class="stat-card-icon purple"><i class="fa-solid fa-sack-dollar"></i></div>
+    </div>
+    <div class="stat-card-value" style="font-size:20px">
+      {% if total_revenue >= 1000000000 %}{{ '%.1f'|format(total_revenue/1000000000) }}B
+      {% elif total_revenue >= 1000000 %}{{ '%.1f'|format(total_revenue/1000000) }}M
+      {% else %}{{ '{:,.0f}'.format(total_revenue).replace(',','.') }}{% endif %} đ
+    </div>
+    <div class="stat-card-sub">Tất cả video</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Tỷ lệ tương tác TB</span>
+      <div class="stat-card-icon orange"><i class="fa-solid fa-heart"></i></div>
+    </div>
+    <div class="stat-card-value">{{ global_eng }}%</div>
+    <div class="stat-card-sub">Like + comment + share</div>
+  </div>
+</div>
+
+{# ===================== BIỂU ĐỒ XU HƯỚNG ===================== #}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-chart-line" style="color:var(--primary);margin-right:6px"></i>
+      Lượt xem theo {% if selected_plat_name %}{{ selected_plat_name }}{% else %}từng nền tảng{% endif %}
+      ({{ date_from_disp }} — {{ date_to_disp }})
+    </h3>
+  </div>
+  <div class="card-body">
+    {% if platform_chart_data %}
+    <div class="chart-container" style="height:280px">
+      <canvas id="chartPlatformTrend"></canvas>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:36px">
+      <i class="fa-solid fa-chart-line"></i>
+      <h4>Không có dữ liệu</h4><p>Thử chọn khoảng thời gian khác</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# Biểu đồ cột so sánh #}
+<div class="grid-2" style="margin-bottom:20px">
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-bar" style="color:var(--success);margin-right:6px"></i>So sánh lượt xem</h3>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:230px"><canvas id="chartBarViews"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-bar" style="color:var(--warning);margin-right:6px"></i>So sánh đơn hàng</h3>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:230px"><canvas id="chartBarOrders"></canvas></div>
+    </div>
+  </div>
+</div>
+
+{# 6 tháng #}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-chart-area" style="color:var(--info);margin-right:6px"></i>Xu hướng lượt xem 6 tháng gần nhất</h3>
+  </div>
+  <div class="card-body">
+    <div class="chart-container" style="height:250px"><canvas id="chartMonthly"></canvas></div>
+  </div>
+</div>
+
+{# ===================== BẢNG NỀN TẢNG ===================== #}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-layer-group" style="color:var(--primary);margin-right:6px"></i>Hiệu suất chi tiết theo nền tảng</h3>
+    <a href="{{ url_for('analytics_export', period=period, platform=plat_filter, date_from=date_from, date_to=date_to) }}"
+       class="btn btn-success btn-sm"><i class="fa-solid fa-file-excel"></i> Xuất Excel</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nền tảng</th>
+          <th class="num">Video</th>
+          <th class="num">Lượt xem</th>
+          <th class="num">Thích</th>
+          <th class="num">Bình luận</th>
+          <th class="num">Chia sẻ</th>
+          <th class="num">Đơn hàng</th>
+          <th class="num">Doanh thu</th>
+          <th class="num">Tương tác%</th>
+          <th class="num">CTR TB%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pd in platform_data %}
+        <tr style="{% if plat_filter|string == pd.id|string %}background:#F0F9FF{% endif %}">
+          <td>
+            <a href="{{ url_for('analytics', period=period, platform=pd.id, date_from=date_from, date_to=date_to) }}"
+               style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text)">
+              <span style="width:12px;height:12px;border-radius:50%;background:{{pd.color}};display:inline-block;flex-shrink:0"></span>
+              <strong>{{ pd.name }}</strong>
+              <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;color:var(--text-muted)"></i>
+            </a>
+          </td>
+          <td class="num">{{ pd.video_count }}</td>
+          <td class="num">{{ '{:,}'.format(pd.views).replace(',','.') }}</td>
+          <td class="num">{{ '{:,}'.format(pd.likes).replace(',','.') }}</td>
+          <td class="num">{{ '{:,}'.format(pd.comments).replace(',','.') }}</td>
+          <td class="num">{{ '{:,}'.format(pd.shares).replace(',','.') }}</td>
+          <td class="num">{{ '{:,}'.format(pd.orders).replace(',','.') }}</td>
+          <td class="num">{{ '{:,.0f}'.format(pd.revenue).replace(',','.') }} đ</td>
+          <td class="num">
+            <span style="font-weight:700;color:
+              {%- if pd.engagement_rate >= 7 %}var(--success)
+              {%- elif pd.engagement_rate >= 4 %}var(--warning)
+              {%- else %}var(--danger){% endif %}">{{ pd.engagement_rate }}%</span>
+          </td>
+          <td class="num">{{ pd.avg_ctr }}%</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" style="text-align:center;padding:28px;color:var(--text-muted)">
+          Không có dữ liệu trong khoảng thời gian này
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ===================== TOP 10 VIDEO + ĐÁNH GIÁ ===================== #}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-trophy" style="color:var(--warning);margin-right:6px"></i>
+      Top 10 video hiệu quả nhất{% if selected_plat_name %} — {{ selected_plat_name }}{% endif %}
+    </h3>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>Tiêu đề</th>
+          <th>Nền tảng</th>
+          <th class="num">Lượt xem</th>
+          <th class="num">Tương tác%</th>
+          <th class="num">Đơn hàng</th>
+          <th class="num">Doanh thu</th>
+          <th style="text-align:center;min-width:120px">Đánh giá hiệu quả</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in top10 %}
+        {% set grade = v.performance_grade %}
+        {% set score = v.performance_score %}
+        <tr>
+          <td>
+            {% if loop.index == 1 %}<span style="font-size:16px">🥇</span>
+            {% elif loop.index == 2 %}<span style="font-size:16px">🥈</span>
+            {% elif loop.index == 3 %}<span style="font-size:16px">🥉</span>
+            {% else %}<span style="color:var(--text-muted);font-weight:600">{{ loop.index }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('video_detail', vid=v.id) }}"
+               style="font-weight:600;color:var(--text);text-decoration:none;display:block;
+                      max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              {{ v.title }}
+            </a>
+            <span style="font-size:10px;color:var(--text-muted)">
+              {{ v.published_at.strftime('%d/%m/%Y') if v.published_at else '—' }}
+            </span>
+          </td>
+          <td>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px">
+              <span style="width:8px;height:8px;border-radius:50%;background:{{v.platform.color if v.platform else '#999'}};display:inline-block"></span>
+              {{ v.platform.name if v.platform else '—' }}
+            </span>
+          </td>
+          <td class="num">{{ '{:,}'.format(v.views).replace(',','.') }}</td>
+          <td class="num">
+            <span style="font-weight:600;color:{%- if v.engagement_rate>=7%}var(--success){%- elif v.engagement_rate>=4%}var(--warning){%- else%}var(--danger){% endif %}">
+              {{ v.engagement_rate }}%
+            </span>
+          </td>
+          <td class="num">{{ v.orders }}</td>
+          <td class="num">{{ '{:,.0f}'.format(v.revenue).replace(',','.') }} đ</td>
+          <td style="text-align:center">
+            <div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px">
+              {# Vòng tròn điểm #}
+              <div style="position:relative;width:52px;height:52px">
+                <svg viewBox="0 0 52 52" width="52" height="52" style="transform:rotate(-90deg)">
+                  <circle cx="26" cy="26" r="21" fill="none" stroke="#F1F5F9" stroke-width="5"/>
+                  <circle cx="26" cy="26" r="21" fill="none"
+                    stroke="{%- if score>=70%}#10B981{%- elif score>=50%}#3B82F6{%- elif score>=30%}#F59E0B{%- else%}#EF4444{% endif %}"
+                    stroke-width="5" stroke-linecap="round"
+                    stroke-dasharray="131.9"
+                    stroke-dashoffset="{{ (131.9 - score/100*131.9)|round(1) }}"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800">
+                  {{ score }}
+                </div>
+              </div>
+              <span class="badge badge-{{ grade[1] }}" style="font-size:10px;padding:2px 8px">
+                {{ grade[2] }} {{ grade[0] }}
+              </span>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">Chưa có video</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ===================== BẢNG TẤT CẢ VIDEO (khi lọc theo 1 nền tảng) ===================== #}
+{% if plat_filter and all_filtered_videos %}
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-film" style="color:var(--primary);margin-right:6px"></i>
+      Tất cả video — {{ selected_plat_name }} · {{ date_from_disp }} – {{ date_to_disp }}
+    </h3>
+    <span style="font-size:12px;color:var(--text-muted)">{{ all_filtered_videos|length }} video</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tiêu đề</th>
+          <th class="num">Lượt xem</th>
+          <th class="num">Tương tác%</th>
+          <th class="num">Đơn hàng</th>
+          <th class="num">Doanh thu</th>
+          <th style="text-align:center;min-width:140px">Đánh giá hiệu quả</th>
+          <th>Nhận xét</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in all_filtered_videos %}
+        {% set grade = v.performance_grade %}
+        {% set score = v.performance_score %}
+        {% set eng   = v.engagement_rate %}
+        {% set op1k  = (v.orders/v.views*1000)|round(2) if v.views>0 else 0 %}
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px">{{ loop.index }}</td>
+          <td>
+            <a href="{{ url_for('video_detail', vid=v.id) }}"
+               style="font-weight:600;color:var(--text);text-decoration:none;
+                      max-width:200px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              {{ v.title }}
+            </a>
+            <span style="font-size:10px;color:var(--text-muted)">
+              {{ v.published_at.strftime('%d/%m/%Y') if v.published_at else v.created_at.strftime('%d/%m/%Y') if v.created_at else '' }}
+            </span>
+          </td>
+          <td class="num">{{ '{:,}'.format(v.views).replace(',','.') }}</td>
+          <td class="num">
+            <span style="font-weight:700;color:{%- if eng>=7%}var(--success){%- elif eng>=4%}var(--warning){%- else%}var(--danger){% endif %}">
+              {{ eng }}%
+            </span>
+          </td>
+          <td class="num">{{ v.orders }}</td>
+          <td class="num">{{ '{:,.0f}'.format(v.revenue).replace(',','.') }} đ</td>
+          <td style="text-align:center">
+            <div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px">
+              <div style="position:relative;width:50px;height:50px">
+                <svg viewBox="0 0 50 50" width="50" height="50" style="transform:rotate(-90deg)">
+                  <circle cx="25" cy="25" r="20" fill="none" stroke="#F1F5F9" stroke-width="5"/>
+                  <circle cx="25" cy="25" r="20" fill="none"
+                    stroke="{%- if score>=70%}#10B981{%- elif score>=50%}#3B82F6{%- elif score>=30%}#F59E0B{%- else%}#EF4444{% endif %}"
+                    stroke-width="5" stroke-linecap="round"
+                    stroke-dasharray="125.6"
+                    stroke-dashoffset="{{ (125.6 - score/100*125.6)|round(1) }}"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800">{{ score }}</div>
+              </div>
+              <span class="badge badge-{{ grade[1] }}" style="font-size:10px;padding:2px 7px">
+                {{ grade[2] }} {{ grade[0] }}
+              </span>
+            </div>
+          </td>
+          <td style="font-size:11px;line-height:1.5;max-width:180px">
+            {% if score >= 85 %}
+            <span style="color:var(--success)"><i class="fa-solid fa-trophy"></i> Xuất sắc! Nhân rộng format này.</span>
+            {% elif score >= 70 %}
+            <span style="color:#1D4ED8"><i class="fa-solid fa-thumbs-up"></i> Tốt. Tối ưu thêm CTA.</span>
+            {% elif score >= 50 %}
+            <span style="color:var(--warning)"><i class="fa-solid fa-chart-line"></i> Khá. Cải thiện hook đầu video.</span>
+            {% elif score >= 30 %}
+            <span style="color:var(--danger)"><i class="fa-solid fa-triangle-exclamation"></i> Yếu. Xem lại nội dung & hashtag.</span>
+            {% else %}
+            <span style="color:#94A3B8"><i class="fa-solid fa-xmark"></i> Rất yếu. Cân nhắc làm lại.</span>
+            {% endif %}
+            {% if eng < 2 and v.views > 0 %}
+            <br><span style="color:var(--danger)">Tương tác quá thấp ({{eng}}%)</span>
+            {% endif %}
+            {% if op1k < 0.3 and v.views > 500 %}
+            <br><span style="color:var(--warning)">Chuyển đổi thấp ({{op1k}}/1000v)</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCustom() {
+  var el = document.getElementById('customRange');
+  el.style.display = el.style.display==='flex' ? 'none' : 'flex';
+}
+
+var chartLabels       = {{ chart_labels        | tojson | safe }};
+var platformChartData = {{ platform_chart_data | tojson | safe }};
+var platformData      = {{ platform_data       | tojson | safe }};
+var monthLabels       = {{ month_labels        | tojson | safe }};
+var monthData         = {{ month_data          | tojson | safe }};
+
+function drawAllCharts() {
+
+  // === 1. Biểu đồ đường xu hướng ===
+  var canvas1 = document.getElementById('chartPlatformTrend');
+  if (canvas1 && platformChartData.length > 0) {
+    var labels = chartLabels.slice();
+    var allData = platformChartData.map(function(p){ return p.views.slice(); });
+
+    // Neu tat ca = 0 -> phan bo deu tu platformData.views
+    var hasData = allData.some(function(arr){ return arr.some(function(v){ return v > 0; }); });
+    if (!hasData) {
+      allData = platformChartData.map(function(p, i) {
+        var total = platformData[i] ? platformData[i].views : 0;
+        var n = labels.length || 1;
+        return labels.map(function() { return Math.round(total / n); });
+      });
+    }
+
+    // Neu > 60 diem thi gom theo tuan
+    if (labels.length > 60) {
+      var newL = [], newD = platformChartData.map(function(){ return []; });
+      for (var i = 0; i < labels.length; i += 7) {
+        newL.push(labels[i]);
+        newD.forEach(function(nd, di) {
+          var s = 0;
+          for (var j = i; j < Math.min(i+7, allData[di].length); j++) s += allData[di][j];
+          nd.push(s);
+        });
+      }
+      labels = newL; allData = newD;
+    }
+
+    new Chart(canvas1.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: platformChartData.map(function(p, i) {
+          return {
+            label: p.name, data: allData[i],
+            borderColor: p.color, backgroundColor: p.color + '20',
+            fill: false, tension: 0.4,
+            pointRadius: labels.length <= 20 ? 4 : 1,
+            pointBackgroundColor: p.color, borderWidth: 2,
+          };
+        })
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font:{size:12}, boxWidth:12, padding:16 } },
+          tooltip: { callbacks: { label: function(ctx) {
+            var v = ctx.parsed.y;
+            return ' ' + ctx.dataset.label + ': ' + (v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(1)+'K':v);
+          }}}
+        },
+        scales: {
+          x: { grid:{display:false}, ticks:{font:{size:11}, maxTicksLimit:12} },
+          y: { beginAtZero:true, grid:{color:'#F1F5F9'}, ticks:{font:{size:11}, callback:function(v){
+            return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(1)+'K':v;
+          }}}
+        }
+      }
+    });
+  }
+
+  // === 2. Biểu đồ cột lượt xem ===
+  var canvas2 = document.getElementById('chartBarViews');
+  if (canvas2 && platformData.length > 0) {
+    var pLabels = platformData.map(function(p){ return p.name; });
+    var pColors = platformData.map(function(p){ return p.color; });
+    new Chart(canvas2.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: pLabels,
+        datasets: [{
+          label: 'Lượt xem',
+          data: platformData.map(function(p){ return p.views; }),
+          backgroundColor: pColors.map(function(c){ return c+'CC'; }),
+          borderColor: pColors, borderWidth: 2, borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { font:{size:12}, boxWidth:12 } } },
+        scales: {
+          x: { grid:{display:false} },
+          y: { beginAtZero:true, ticks:{ callback:function(v){
+            return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(1)+'K':v;
+          }}}
+        }
+      }
+    });
+  }
+
+  // === 3. Biểu đồ cột đơn hàng ===
+  var canvas3 = document.getElementById('chartBarOrders');
+  if (canvas3 && platformData.length > 0) {
+    var pLabels2 = platformData.map(function(p){ return p.name; });
+    var pColors2 = platformData.map(function(p){ return p.color; });
+    new Chart(canvas3.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: pLabels2,
+        datasets: [{
+          label: 'Đơn hàng',
+          data: platformData.map(function(p){ return p.orders; }),
+          backgroundColor: pColors2.map(function(c){ return c+'CC'; }),
+          borderColor: pColors2, borderWidth: 2, borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { font:{size:12}, boxWidth:12 } } },
+        scales: { x:{grid:{display:false}}, y:{beginAtZero:true} }
+      }
+    });
+  }
+
+  // === 4. Biểu đồ 6 tháng ===
+  var canvas4 = document.getElementById('chartMonthly');
+  if (canvas4 && monthLabels.length > 0 && monthData.length > 0) {
+    new Chart(canvas4.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: monthLabels,
+        datasets: monthData.map(function(p) {
+          return {
+            label: p.name, data: p.views,
+            borderColor: p.color, backgroundColor: p.color+'15',
+            fill: true, tension: 0.4, pointRadius: 4,
+            pointBackgroundColor: p.color, borderWidth: 2,
+          };
+        })
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode:'index', intersect:false },
+        plugins: { legend: { position:'top', labels:{ font:{size:12}, boxWidth:12, padding:16 } } },
+        scales: {
+          x: { grid:{display:false} },
+          y: { beginAtZero:true, ticks:{ callback:function(v){
+            return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(1)+'K':v;
+          }}}
+        }
+      }
+    });
+  }
+}
+
+// Goi truc tiep - Chart.js da load dong bo tu local
+drawAllCharts();
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Duyệt tài khoản{% endblock %}
+{% block page_title %}Duyệt tài khoản{% endblock %}
+{% block page_subtitle %}Danh sách tài khoản chờ xét duyệt · {{ pending_users|length }} yêu cầu{% endblock %}
+
+{% block content %}
+
+{% if pending_users %}
+<div style="display:flex;flex-direction:column;gap:16px">
+  {% for u in pending_users %}
+  <div class="card">
+    <div class="card-body" style="padding:20px 24px">
+      <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+
+        <!-- Avatar + info -->
+        <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:260px">
+          <div style="width:52px;height:52px;border-radius:50%;flex-shrink:0;
+                      background:{% if u.role=='admin' %}#FEE2E2{% else %}#DBEAFE{% endif %};
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:20px;font-weight:800;
+                      color:{% if u.role=='admin' %}#B91C1C{% else %}#1D4ED8{% endif %}">
+            {{ u.full_name[0] }}
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text)">{{ u.full_name }}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+              @{{ u.username }} &nbsp;·&nbsp; {{ u.email }}
+            </div>
+            {% if u.phone %}
+            <div style="font-size:12px;color:var(--text-muted)">
+              <i class="fa-solid fa-phone" style="font-size:10px"></i> {{ u.phone }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Vai tro + thoi gian -->
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:160px">
+          <div>
+            {% if u.role == 'admin' %}
+              <span class="badge badge-danger" style="font-size:12px;padding:4px 12px">
+                <i class="fa-solid fa-shield-halved"></i> Quản trị viên
+              </span>
+            {% else %}
+              <span class="badge badge-info" style="font-size:12px;padding:4px 12px">
+                <i class="fa-solid fa-user-tie"></i> Quản lý
+              </span>
+            {% endif %}
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)">
+            <i class="fa-regular fa-clock"></i>
+            Đăng ký: {{ u.created_at.strftime('%d/%m/%Y %H:%M') if u.created_at else '' }}
+          </div>
+        </div>
+
+        <!-- Nut hanh dong -->
+        <div style="display:flex;gap:10px;align-items:center;flex-shrink:0">
+          <!-- Duyet -->
+          <form method="POST" action="{{ url_for('user_approve', uid=u.id) }}">
+            <button type="submit" class="btn btn-success"
+                    onclick="return confirm('Duyệt tài khoản {{ u.full_name }}?')">
+              <i class="fa-solid fa-check"></i> Duyệt
+            </button>
+          </form>
+
+          <!-- Tu choi -->
+          <button class="btn btn-danger" onclick="openRejectModal({{ u.id }}, '{{ u.full_name }}')">
+            <i class="fa-solid fa-xmark"></i> Từ chối
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Canh bao vai tro admin -->
+      {% if u.role == 'admin' %}
+      <div style="margin-top:12px;padding:10px 14px;background:#FEF9C3;border-radius:8px;
+                  border-left:3px solid #F59E0B;font-size:12px;color:#92400E">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <strong>Lưu ý:</strong> Tài khoản này yêu cầu quyền <strong>Quản trị viên</strong> —
+        có toàn quyền hệ thống. Hãy xem xét kỹ trước khi duyệt.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:64px 20px">
+    <i class="fa-solid fa-user-check" style="color:var(--success)"></i>
+    <h4>Không có tài khoản nào chờ duyệt</h4>
+    <p>Tất cả yêu cầu đăng ký đã được xử lý.</p>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal tu choi -->
+<div class="modal-overlay" id="modalReject">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-header">
+      <h4><i class="fa-solid fa-xmark" style="color:var(--danger)"></i> Từ chối tài khoản</h4>
+      <button class="modal-close" onclick="closeModal('modalReject')">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <form method="POST" id="rejectForm">
+      <div class="modal-body">
+        <p style="font-size:13px;margin-bottom:14px">
+          Từ chối yêu cầu đăng ký của <strong id="rejectName"></strong>.
+          Vui lòng nhập lý do:
+        </p>
+        <div class="form-group">
+          <label class="form-label">Lý do từ chối</label>
+          <textarea name="reason" class="form-control" rows="3"
+                    placeholder="Ví dụ: Thông tin chưa đầy đủ, không đúng vị trí..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalReject')">Hủy</button>
+        <button type="submit" class="btn btn-danger">
+          <i class="fa-solid fa-xmark"></i> Xác nhận từ chối
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openRejectModal(uid, name) {
+  document.getElementById('rejectName').textContent = name;
+  document.getElementById('rejectForm').action = '/users/' + uid + '/reject';
+  openModal('modalReject');
+}
+</script>
+{% endblock %}

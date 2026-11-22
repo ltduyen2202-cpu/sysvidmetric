@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Import video từ Excel{% endblock %}
+{% block page_title %}Import video từ Excel{% endblock %}
+{% block page_subtitle %}Nhập hàng loạt video từ file Excel{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('videos') }}" class="btn btn-secondary btn-sm">
+    <i class="fa-solid fa-arrow-left"></i> Quay lại
+  </a>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:800px">
+
+  <!-- Hướng dẫn -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-circle-info" style="color:var(--primary);margin-right:6px"></i>Hướng dẫn import video</h3>
+      <a href="{{ url_for('video_template') }}" class="btn btn-success btn-sm">
+        <i class="fa-solid fa-file-excel"></i> Tải file mẫu (.xlsx)
+      </a>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">
+            <i class="fa-solid fa-list-check" style="color:var(--success)"></i> Các bước
+          </div>
+          <ol style="font-size:13px;color:var(--text-muted);line-height:2.2;padding-left:18px">
+            <li>Tải file mẫu Excel (nút xanh)</li>
+            <li>Điền dữ liệu video vào các dòng</li>
+            <li>Lưu file định dạng <strong>.xlsx</strong></li>
+            <li>Upload và nhấn <strong>Import</strong></li>
+          </ol>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">
+            <i class="fa-solid fa-table" style="color:var(--primary)"></i> Cấu trúc cột
+          </div>
+          <table style="width:100%;font-size:12px;border-collapse:collapse">
+            {% for col, name, req in [
+              ('A','Tiêu đề video', True),
+              ('B','Nền tảng', True),
+              ('C-H','Views/Likes/Cmt/Share/Save/Orders', False),
+              ('I','Doanh thu (đ)', False),
+              ('J','CTR (%)', False),
+              ('L','URL video', False),
+              ('M','Tags', False),
+              ('N','Trạng thái', False),
+              ('O','Chiến dịch', False),
+              ('P','Sản phẩm', False),
+            ] %}
+            <tr style="border-bottom:1px solid #F1F5F9">
+              <td style="padding:4px 8px;font-weight:700;color:var(--primary);width:40px">{{ col }}</td>
+              <td style="padding:4px 8px">{{ name }}</td>
+              <td style="padding:4px 8px">
+                {% if req %}<span class="badge badge-danger" style="font-size:10px">Bắt buộc</span>
+                {% else %}<span class="badge badge-secondary" style="font-size:10px">Tùy chọn</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+      </div>
+
+      <!-- Nền tảng hợp lệ -->
+      <div style="margin-top:16px;padding:12px 16px;background:#EFF6FF;border-radius:8px;border-left:3px solid var(--primary);font-size:12px">
+        <strong><i class="fa-solid fa-layer-group"></i> Nền tảng hợp lệ:</strong>
+        {% for p in platforms %}
+        <span style="display:inline-flex;align-items:center;gap:4px;margin:0 6px;font-weight:600">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{p.color}};display:inline-block"></span>
+          {{ p.name }}
+        </span>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:10px;padding:10px 14px;background:#FEF9C3;border-radius:8px;border-left:3px solid #F59E0B;font-size:12px;color:#92400E">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <strong>Lưu ý:</strong>
+        Tên nền tảng phải khớp (không phân biệt hoa/thường).
+        Chiến dịch và sản phẩm phải <strong>tồn tại trong hệ thống</strong>.
+        Giá trị số chỉ nhập số, không có dấu chấm phẩy nghìn.
+      </div>
+    </div>
+  </div>
+
+  <!-- Form upload -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-upload" style="color:var(--success);margin-right:6px"></i>Chọn file Excel</h3>
+    </div>
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data" id="importForm">
+
+        <!-- Khu vực kéo thả -->
+        <div id="dropZone" style="border:2.5px dashed #CBD5E1;border-radius:14px;
+             padding:48px 20px;text-align:center;cursor:pointer;
+             transition:all .2s;background:#FAFBFF;margin-bottom:20px"
+          onclick="document.getElementById('excelFile').click()"
+          ondragover="dragOver(event)" ondragleave="dragLeave(event)"
+          ondrop="dropFile(event)">
+          <div style="font-size:48px;color:#CBD5E1;margin-bottom:12px">
+            <i class="fa-solid fa-file-excel"></i>
+          </div>
+          <div style="font-size:15px;font-weight:600;color:var(--text-muted)">
+            Kéo & thả file Excel vào đây
+          </div>
+          <div style="font-size:12px;color:#CBD5E1;margin-top:6px">
+            hoặc click để chọn file · Chỉ hỗ trợ .xlsx, .xls
+          </div>
+        </div>
+
+        <input type="file" name="excel_file" id="excelFile" accept=".xlsx,.xls"
+               style="display:none" onchange="fileSelected(this)"/>
+
+        <!-- Preview file đã chọn -->
+        <div id="filePreview" style="display:none;margin-bottom:20px;
+             padding:14px 18px;background:#F0FDF4;border:1px solid #BBF7D0;
+             border-radius:10px;align-items:center;gap:14px">
+          <i class="fa-solid fa-file-excel" style="font-size:28px;color:#16A34A"></i>
+          <div style="flex:1">
+            <div id="fileName" style="font-size:14px;font-weight:700;color:#15803D"></div>
+            <div id="fileSize" style="font-size:12px;color:#166534;margin-top:2px"></div>
+          </div>
+          <button type="button" class="btn btn-sm"
+                  style="background:#FEE2E2;color:#B91C1C;border:1px solid #FECACA"
+                  onclick="clearFile()">
+            <i class="fa-solid fa-xmark"></i> Xóa
+          </button>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center">
+          <button type="submit" class="btn btn-primary" id="importBtn" disabled>
+            <i class="fa-solid fa-file-import"></i> Import video
+          </button>
+          <a href="{{ url_for('videos') }}" class="btn btn-secondary">
+            <i class="fa-solid fa-xmark"></i> Hủy
+          </a>
+          <span id="importHint" style="font-size:12px;color:var(--text-muted)">Chưa chọn file</span>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function dragOver(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.borderColor = '#2563EB';
+  document.getElementById('dropZone').style.background  = '#EFF6FF';
+}
+function dragLeave() {
+  document.getElementById('dropZone').style.borderColor = '#CBD5E1';
+  document.getElementById('dropZone').style.background  = '#FAFBFF';
+}
+function dropFile(e) {
+  e.preventDefault(); dragLeave();
+  var file = e.dataTransfer.files[0];
+  if (file) {
+    var dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById('excelFile').files = dt.files;
+    fileSelected(document.getElementById('excelFile'));
+  }
+}
+function fileSelected(input) {
+  var file = input.files[0]; if (!file) return;
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','xls'].includes(ext)) { alert('Chỉ chấp nhận .xlsx hoặc .xls!'); clearFile(); return; }
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = 'Kích thước: ' +
+    (file.size > 1048576 ? (file.size/1048576).toFixed(2)+' MB' : (file.size/1024).toFixed(1)+' KB');
+  document.getElementById('filePreview').style.display = 'flex';
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('importBtn').disabled = false;
+  document.getElementById('importHint').textContent = '✓ Sẵn sàng import';
+  document.getElementById('importHint').style.color = '#10B981';
+}
+function clearFile() {
+  document.getElementById('excelFile').value = '';
+  document.getElementById('filePreview').style.display = 'none';
+  document.getElementById('dropZone').style.display = 'block';
+  document.getElementById('importBtn').disabled = true;
+  document.getElementById('importHint').textContent = 'Chưa chọn file';
+  document.getElementById('importHint').style.color = '';
+}
+document.getElementById('importForm').addEventListener('submit', function() {
+  var btn = document.getElementById('importBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...';
+});
+</script>
+{% endblock %}

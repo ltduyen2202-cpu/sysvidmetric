@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}{{ video.title }}{% endblock %}
+{% block page_title %}Chi tiết video{% endblock %}
+{% block page_subtitle %}{{ video.title }}{% endblock %}
+
+{% block header_actions %}
+  {% if user and user.is_manager() %}
+  <a href="{{ url_for('video_edit', vid=video.id) }}" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-pen"></i> Chỉnh sửa
+  </a>
+  {% endif %}
+  <a href="{{ url_for('videos') }}" class="btn btn-secondary btn-sm">
+    <i class="fa-solid fa-arrow-left"></i> Quay lại
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="grid-2" style="margin-bottom:20px">
+  <!-- Thong tin video -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-film" style="color:var(--primary);margin-right:6px"></i>Thông tin video</h3>
+      <div style="display:flex;align-items:center;gap:8px">
+        {% set grade = video.performance_grade %}
+        {% set score = video.performance_score %}
+        <span class="badge badge-{{ grade[1] }}" style="font-size:13px;padding:5px 14px">
+          {{ grade[2] }} {{ grade[0] }} · {{ score }}/100
+        </span>
+        {% if video.status == 'published' %}
+          <span class="badge badge-success">Đã đăng</span>
+        {% elif video.status == 'draft' %}
+          <span class="badge badge-warning">Bản nháp</span>
+        {% else %}
+          <span class="badge badge-secondary">Lưu trữ</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        {% macro row(label, value) %}
+        <tr>
+          <td style="padding:8px 0;color:var(--text-muted);width:40%;font-weight:500">{{ label }}</td>
+          <td style="padding:8px 0;font-weight:600">{{ value }}</td>
+        </tr>
+        {% endmacro %}
+        {{ row('Nền tảng', video.platform.name if video.platform else '—') }}
+        {{ row('Sản phẩm', video.product.name if video.product else '—') }}
+        {{ row('Chiến dịch', video.campaign.name if video.campaign else '—') }}
+        {{ row('Người tạo', video.creator.full_name if video.creator else '—') }}
+        {{ row('Thời lượng', (video.duration|string) + ' giây') }}
+        {{ row('Ngày đăng', video.published_at.strftime('%d/%m/%Y %H:%M') if video.published_at else '—') }}
+        {{ row('Ngày tạo', video.created_at.strftime('%d/%m/%Y') if video.created_at else '—') }}
+      </table>
+      {% if video.description %}
+      <div class="divider"></div>
+      <div style="font-size:13px;color:var(--text-muted)">{{ video.description }}</div>
+      {% endif %}
+      {% if video.tags %}
+      <div style="margin-top:10px">
+        {% for tag in video.tags.split(',') %}
+        <span class="tag"># {{ tag.strip() }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if video.video_url %}
+      <div style="margin-top:12px">
+        <a href="{{ video.video_url }}" target="_blank" class="btn btn-ghost btn-sm">
+          <i class="fa-solid fa-external-link"></i> Xem trên nền tảng
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Chi so hieu qua -->
+  <div>
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <span class="stat-card-label">Lượt xem</span>
+          <div class="stat-card-icon blue"><i class="fa-solid fa-eye"></i></div>
+        </div>
+        <div class="stat-card-value">{{ '{:,}'.format(video.views).replace(',','.') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <span class="stat-card-label">Lượt thích</span>
+          <div class="stat-card-icon red"><i class="fa-solid fa-heart"></i></div>
+        </div>
+        <div class="stat-card-value">{{ '{:,}'.format(video.likes).replace(',','.') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <span class="stat-card-label">Bình luận</span>
+          <div class="stat-card-icon green"><i class="fa-solid fa-comment"></i></div>
+        </div>
+        <div class="stat-card-value">{{ '{:,}'.format(video.comments).replace(',','.') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <span class="stat-card-label">Chia sẻ</span>
+          <div class="stat-card-icon orange"><i class="fa-solid fa-share"></i></div>
+        </div>
+        <div class="stat-card-value">{{ '{:,}'.format(video.shares).replace(',','.') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <span class="stat-card-label">Tỷ lệ tương tác</span>
+          <div class="stat-card-icon purple"><i class="fa-solid fa-percent"></i></div>
+        </div>
+        <div class="stat-card-value">{{ video.engagement_rate }}%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <span class="stat-card-label">CTR</span>
+          <div class="stat-card-icon teal"><i class="fa-solid fa-cursor"></i></div>
+        </div>
+        <div class="stat-card-value">{{ video.ctr }}%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <span class="stat-card-label">Đơn hàng</span>
+          <div class="stat-card-icon blue"><i class="fa-solid fa-cart-shopping"></i></div>
+        </div>
+        <div class="stat-card-value">{{ '{:,}'.format(video.orders).replace(',','.') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <span class="stat-card-label">Doanh thu</span>
+          <div class="stat-card-icon green"><i class="fa-solid fa-sack-dollar"></i></div>
+        </div>
+        <div class="stat-card-value" style="font-size:20px">
+          {{ '{:,.0f}'.format(video.revenue).replace(',','.') }} đ
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Đánh giá hiệu quả chi tiết -->
+{% set grade = video.performance_grade %}
+{% set score = video.performance_score %}
+{% set eng   = video.engagement_rate %}
+{% set op1k  = (video.orders / video.views * 1000) | round(2) if video.views > 0 else 0 %}
+{% set viral = ((video.shares + video.saves) / video.views * 100) | round(2) if video.views > 0 else 0 %}
+
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-star" style="color:#F59E0B;margin-right:6px"></i>Đánh giá hiệu quả tổng hợp</h3>
+    <span class="badge badge-{{ grade[1] }}" style="font-size:13px;padding:5px 14px">
+      {{ grade[2] }} {{ grade[0] }} — {{ score }}/100 điểm
+    </span>
+  </div>
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <!-- Bar hiệu suất -->
+        {% set bars = [
+          ('Lượt xem (reach)', score if score else 0, '#2563EB',
+           ('Rất tốt' if video.views >= 100000 else ('Tốt' if video.views >= 10000 else ('Trung bình' if video.views >= 1000 else 'Thấp')))),
+          ('Tỷ lệ tương tác', [(eng/10*100)|int, 100]|min, '#EF4444',
+           (eng|string + '% — ' + ('Xuất sắc' if eng >= 7 else ('Tốt' if eng >= 4 else ('TB' if eng >= 1 else 'Yếu'))))),
+          ('Khả năng lan truyền', [(viral/5*100)|int, 100]|min, '#F59E0B',
+           (viral|string + '% share+save — ' + ('Tốt' if viral >= 3 else ('TB' if viral >= 1 else 'Thấp')))),
+          ('Hiệu suất thương mại', [(op1k/2*100)|int, 100]|min, '#10B981',
+           (op1k|string + ' đơn/1000v — ' + ('Tốt' if op1k >= 1 else ('TB' if op1k >= 0.5 else 'Thấp')))),
+        ] %}
+        {% for name, pct, color, note in bars %}
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <span style="font-size:13px;font-weight:600">{{ name }}</span>
+            <span style="font-size:12px;color:var(--text-muted)">{{ note }}</span>
+          </div>
+          <div class="progress">
+            <div class="progress-bar" style="width:{{ pct }}%;background:{{ color }}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div>
+        <!-- Nhận xét & gợi ý -->
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">
+          <i class="fa-solid fa-lightbulb" style="color:#F59E0B"></i> Nhận xét & Gợi ý cải thiện
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          {% if eng < 3 %}
+          <div style="padding:9px 12px;background:#FEF2F2;border-radius:8px;border-left:3px solid #EF4444;font-size:12px">
+            <strong>Tương tác thấp ({{ eng }}%)</strong> — Thêm câu hỏi vào caption, dùng trending sound, CTA rõ ràng cuối video.
+          </div>
+          {% elif eng >= 7 %}
+          <div style="padding:9px 12px;background:#F0FDF4;border-radius:8px;border-left:3px solid #10B981;font-size:12px">
+            <strong>Tương tác xuất sắc ({{ eng }}%)</strong> — Video đang hoạt động rất tốt. Tiếp tục duy trì format này!
+          </div>
+          {% endif %}
+
+          {% if video.views < 10000 %}
+          <div style="padding:9px 12px;background:#EFF6FF;border-radius:8px;border-left:3px solid #3B82F6;font-size:12px">
+            <strong>Lượt xem thấp ({{ '{:,}'.format(video.views).replace(',','.') }})</strong> — Đăng lúc 19-22h, dùng hashtag trending, chạy TikTok Ads để boost.
+          </div>
+          {% elif video.views >= 100000 %}
+          <div style="padding:9px 12px;background:#F0FDF4;border-radius:8px;border-left:3px solid #10B981;font-size:12px">
+            <strong>Lượt xem rất tốt ({{ '{:,}'.format(video.views).replace(',','.') }})</strong> — Nhân rộng format này sang các nền tảng khác!
+          </div>
+          {% endif %}
+
+          {% if op1k < 0.5 and video.views > 0 %}
+          <div style="padding:9px 12px;background:#FEF9C3;border-radius:8px;border-left:3px solid #F59E0B;font-size:12px">
+            <strong>Chuyển đổi thấp ({{ op1k }} đơn/1000v)</strong> — Kiểm tra link sản phẩm, tối ưu giá, thêm review thực tế.
+          </div>
+          {% elif op1k >= 1 %}
+          <div style="padding:9px 12px;background:#F0FDF4;border-radius:8px;border-left:3px solid #10B981;font-size:12px">
+            <strong>Chuyển đổi tốt ({{ op1k }} đơn/1000v)</strong> — Tỷ lệ TMĐT đạt benchmark. Tăng ngân sách quảng bá!
+          </div>
+          {% endif %}
+
+          {% if viral < 1 and video.views > 0 %}
+          <div style="padding:9px 12px;background:#FDF2F8;border-radius:8px;border-left:3px solid #E4405F;font-size:12px">
+            <strong>Viral thấp ({{ viral }}% share+save)</strong> — Thêm CTA "Lưu lại xem sau" hoặc nội dung giá trị cao để người dùng chia sẻ.
+          </div>
+          {% endif %}
+
+          {% if score >= 85 %}
+          <div style="padding:9px 12px;background:#F0FDF4;border-radius:8px;border-left:3px solid #10B981;font-size:12px">
+            <strong>🏆 Video hiệu quả xuất sắc!</strong> Đây là video điển hình — hãy phân tích và nhân rộng.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bieu do 30 ngay -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-chart-area" style="color:var(--success);margin-right:6px"></i>Hiệu quả 30 ngày qua</h3>
+  </div>
+  <div class="card-body">
+    <div class="chart-container" style="height:280px">
+      <canvas id="chartVideoStat"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+makeLineChart('chartVideoStat',
+  {{ stat_labels | tojson }},
+  [
+    {
+      label: 'Lượt xem',
+      data: {{ stat_views | tojson }},
+      borderColor: '#2563EB',
+      backgroundColor: 'rgba(37,99,235,.07)',
+      fill: true, tension: .4, pointRadius: 2, yAxisID: 'y',
+    },
+    {
+      label: 'Tương tác',
+      data: {{ stat_interactions | tojson }},
+      borderColor: '#10B981',
+      backgroundColor: 'rgba(16,185,129,.07)',
+      fill: true, tension: .4, pointRadius: 2, yAxisID: 'y',
+    },
+  ]
+);
+</script>
+{% endblock %}

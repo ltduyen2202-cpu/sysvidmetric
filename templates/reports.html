@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Báo cáo{% endblock %}
+{% block page_title %}Báo cáo tổng hợp{% endblock %}
+{% block page_subtitle %}Thống kê hiệu quả Short Video thương mại điện tử{% endblock %}
+
+{% block content %}
+
+<!-- Tong quan so -->
+<div class="stats-grid" style="margin-bottom:24px">
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Video đã đăng</span>
+      <div class="stat-card-icon blue"><i class="fa-solid fa-film"></i></div>
+    </div>
+    <div class="stat-card-value">{{ '{:,}'.format(total_videos).replace(',','.') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Tổng lượt xem</span>
+      <div class="stat-card-icon green"><i class="fa-solid fa-eye"></i></div>
+    </div>
+    <div class="stat-card-value">{{ '{:,}'.format(total_views).replace(',','.') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Tổng đơn hàng</span>
+      <div class="stat-card-icon orange"><i class="fa-solid fa-cart-shopping"></i></div>
+    </div>
+    <div class="stat-card-value">{{ '{:,}'.format(total_orders).replace(',','.') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Tổng doanh thu</span>
+      <div class="stat-card-icon purple"><i class="fa-solid fa-sack-dollar"></i></div>
+    </div>
+    <div class="stat-card-value" style="font-size:20px">
+      {{ '{:,.0f}'.format(total_revenue).replace(',','.') }} đ
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Lượt thích</span>
+      <div class="stat-card-icon red"><i class="fa-solid fa-heart"></i></div>
+    </div>
+    <div class="stat-card-value">{{ '{:,}'.format(total_likes).replace(',','.') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <span class="stat-card-label">Lượt chia sẻ</span>
+      <div class="stat-card-icon teal"><i class="fa-solid fa-share"></i></div>
+    </div>
+    <div class="stat-card-value">{{ '{:,}'.format(total_shares).replace(',','.') }}</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:24px">
+  <!-- Top san pham -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-box" style="color:var(--primary);margin-right:6px"></i>Top 5 sản phẩm theo doanh thu</h3>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Sản phẩm</th>
+            <th class="num">Video</th>
+            <th class="num">Đơn hàng</th>
+            <th class="num">Doanh thu</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in top_products %}
+          <tr>
+            <td style="font-weight:700;color:var(--warning)">{{ loop.index }}</td>
+            <td style="font-weight:600">{{ row.name }}</td>
+            <td class="num">{{ row.video_count }}</td>
+            <td class="num">{{ '{:,}'.format(row.total_orders or 0).replace(',','.') }}</td>
+            <td class="num" style="font-weight:700;color:var(--success)">
+              {{ '{:,.0f}'.format(row.total_revenue or 0).replace(',','.') }} đ
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Không có dữ liệu</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bieu do doanh thu san pham -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-pie" style="color:var(--success);margin-right:6px"></i>Phân bổ doanh thu sản phẩm</h3>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:260px">
+        <canvas id="chartProductRevenue"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hieu qua chien dich -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-bullhorn" style="color:var(--danger);margin-right:6px"></i>Hiệu quả chiến dịch Marketing</h3>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Chiến dịch</th>
+          <th class="num">Số video</th>
+          <th class="num">Lượt xem</th>
+          <th class="num">Đơn hàng</th>
+          <th class="num">Doanh thu</th>
+          <th class="num">Đơn/1000 views</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in camp_perf %}
+        {% set op1k = ((row.total_orders or 0) / (row.total_views or 1) * 1000) | round(2) %}
+        <tr>
+          <td style="font-weight:600">{{ row.name }}</td>
+          <td class="num">{{ row.video_count }}</td>
+          <td class="num">{{ '{:,}'.format(row.total_views or 0).replace(',','.') }}</td>
+          <td class="num">{{ '{:,}'.format(row.total_orders or 0).replace(',','.') }}</td>
+          <td class="num" style="font-weight:700;color:var(--success)">
+            {{ '{:,.0f}'.format(row.total_revenue or 0).replace(',','.') }} đ
+          </td>
+          <td class="num">
+            <span style="font-weight:600;color:{% if op1k >= 1 %}var(--success){% elif op1k >= 0.5 %}var(--warning){% else %}var(--danger){% endif %}">
+              {{ op1k }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Không có dữ liệu</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="text-align:center;padding:24px 0;font-size:12px;color:var(--text-muted)">
+  <i class="fa-solid fa-circle-info"></i>
+  Báo cáo chỉ bao gồm video có trạng thái "Đã đăng" · Cập nhật theo thời gian thực
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const prodNames = [{% for r in top_products %}"{{ r.name }}"{% if not loop.last %},{% endif %}{% endfor %}];
+const prodRevs  = [{% for r in top_products %}{{ r.total_revenue or 0 }}{% if not loop.last %},{% endif %}{% endfor %}];
+const prodColors = ['#2563EB','#10B981','#F59E0B','#EF4444','#8B5CF6'];
+
+if (prodNames.length) {
+  makeDoughnutChart('chartProductRevenue', prodNames, prodRevs, prodColors);
+}
+</script>
+{% endblock %}

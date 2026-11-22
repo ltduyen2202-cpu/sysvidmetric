@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Người dùng{% endblock %}
+{% block page_title %}Quản lý Người dùng{% endblock %}
+{% block page_subtitle %}Phân quyền truy cập hệ thống{% endblock %}
+
+{% block header_actions %}
+  <button class="btn btn-primary btn-sm" onclick="openModal('modalAddUser')">
+    <i class="fa-solid fa-plus"></i> Thêm người dùng
+  </button>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Người dùng</th>
+          <th>Email</th>
+          <th>Số điện thoại</th>
+          <th>Vai trò</th>
+          <th>Trạng thái</th>
+          <th>Lần đăng nhập cuối</th>
+          <th>Ngày tạo</th>
+          <th style="text-align:center">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px">{{ loop.index }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--primary);
+                          display:flex;align-items:center;justify-content:center;
+                          color:#fff;font-weight:700;font-size:13px;flex-shrink:0">
+                {{ u.full_name[0] }}
+              </div>
+              <div>
+                <div style="font-weight:600">{{ u.full_name }}</div>
+                <div style="font-size:11px;color:var(--text-muted)">@{{ u.username }}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-size:13px">{{ u.email }}</td>
+          <td style="font-size:13px">{{ u.phone or '—' }}</td>
+          <td>
+            {% if u.role == 'admin' %}
+              <span class="badge badge-danger">Quản trị viên</span>
+            {% elif u.role == 'manager' %}
+              <span class="badge badge-info">Quản lý</span>
+            {% else %}
+              <span class="badge badge-secondary">Người xem</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.status == 'active' %}
+              <span class="badge badge-success">Hoạt động</span>
+            {% else %}
+              <span class="badge badge-secondary">Vô hiệu</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text-muted)">
+            {{ u.last_login.strftime('%d/%m/%Y %H:%M') if u.last_login else 'Chưa đăng nhập' }}
+          </td>
+          <td style="font-size:12px;color:var(--text-muted)">
+            {{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '' }}
+          </td>
+          <td style="text-align:center;white-space:nowrap">
+            <button class="btn btn-icon btn-xs" title="Chỉnh sửa"
+              onclick="fillEditModal('modalEditUser', {
+                id: '{{ u.id }}', full_name: '{{ u.full_name }}',
+                email: '{{ u.email }}', phone: '{{ u.phone or '' }}',
+                role: '{{ u.role }}', status: '{{ u.status }}'
+              })">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            {% if u.id != user.id %}
+            <form method="POST" action="{{ url_for('user_delete', uid=u.id) }}" style="display:inline"
+                  data-confirm="Xóa người dùng '{{ u.full_name }}'?">
+              <button class="btn btn-icon btn-xs" style="background:#FEE2E2;color:#B91C1C;border-color:#FECACA" title="Xóa">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Add User -->
+<div class="modal-overlay" id="modalAddUser">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h4><i class="fa-solid fa-user-plus"></i> Thêm người dùng</h4>
+      <button class="modal-close" onclick="closeModal('modalAddUser')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form method="POST" action="{{ url_for('user_add') }}">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Họ tên đầy đủ <span class="req">*</span></label>
+            <input type="text" name="full_name" class="form-control" required placeholder="Nguyễn Văn A"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên đăng nhập <span class="req">*</span></label>
+            <input type="text" name="username" class="form-control" required placeholder="username"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email <span class="req">*</span></label>
+            <input type="email" name="email" class="form-control" required placeholder="email@sysvn.com"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Số điện thoại</label>
+            <input type="text" name="phone" class="form-control" placeholder="0901234567"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Mật khẩu <span class="req">*</span></label>
+            <input type="password" name="password" class="form-control" required placeholder="Mật khẩu..."/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vai trò</label>
+            <select name="role" class="form-control">
+              {% for val, label in roles %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalAddUser')">Hủy</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-user-plus"></i> Thêm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Edit User -->
+<div class="modal-overlay" id="modalEditUser">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h4><i class="fa-solid fa-pen"></i> Chỉnh sửa người dùng</h4>
+      <button class="modal-close" onclick="closeModal('modalEditUser')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form method="POST" id="formEditUser">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Họ tên đầy đủ <span class="req">*</span></label>
+            <input type="text" name="full_name" class="form-control" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email <span class="req">*</span></label>
+            <input type="email" name="email" class="form-control" required/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Số điện thoại</label>
+            <input type="text" name="phone" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vai trò</label>
+            <select name="role" class="form-control">
+              {% for val, label in roles %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Trạng thái</label>
+            <select name="status" class="form-control">
+              <option value="active">Hoạt động</option>
+              <option value="inactive">Vô hiệu</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mật khẩu mới (để trống nếu không đổi)</label>
+            <input type="password" name="password" class="form-control" placeholder="Mật khẩu mới..."/>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditUser')">Hủy</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fillEditModal(modalId, data) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  const form = modal.querySelector('form');
+  form.action = '/users/' + data.id + '/edit';
+  ['full_name','email','phone','role','status'].forEach(key => {
+    const el = form.querySelector('[name="'+key+'"]');
+    if (el) el.value = data[key] || '';
+  });
+  openModal(modalId);
+}
+</script>
+{% endblock %}

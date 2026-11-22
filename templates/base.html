@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}SYS VidMetric{% endblock %} — SYS VidMetric</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Sidebar Overlay (mobile) -->
+<div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;"
+  onclick="document.getElementById('sidebar').classList.remove('open');this.style.display='none'"></div>
+
+<div class="layout">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">S</div>
+        <div class="sidebar-logo-text">
+          <h2>SYS VidMetric</h2>
+          <span>Short Video Analytics</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Tổng quan</div>
+      <ul>
+        <li class="nav-item">
+          <a href="{{ url_for('dashboard') }}" {% if request.endpoint=='dashboard' %}class="active"{% endif %}>
+            <i class="fa-solid fa-gauge-high"></i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('analytics') }}" {% if request.endpoint=='analytics' %}class="active"{% endif %}>
+            <i class="fa-solid fa-chart-line"></i> Phân tích hiệu quả
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('reports') }}" {% if request.endpoint=='reports' %}class="active"{% endif %}>
+            <i class="fa-solid fa-file-chart-column"></i> Báo cáo
+          </a>
+        </li>
+      </ul>
+
+      <div class="nav-section-title" style="margin-top:8px">Nội dung</div>
+      <ul>
+        <li class="nav-item">
+          <a href="{{ url_for('videos') }}" {% if request.endpoint in ['videos','video_add','video_edit','video_detail'] %}class="active"{% endif %}>
+            <i class="fa-solid fa-film"></i> Quản lý Video
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('campaigns') }}" {% if request.endpoint in ['campaigns','campaign_add','campaign_edit','campaign_detail'] %}class="active"{% endif %}>
+            <i class="fa-solid fa-bullhorn"></i> Chiến dịch
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('platforms') }}" {% if request.endpoint=='platforms' %}class="active"{% endif %}>
+            <i class="fa-solid fa-layer-group"></i> Nền tảng
+          </a>
+        </li>
+      </ul>
+
+      <div class="nav-section-title" style="margin-top:8px">Thương mại</div>
+      <ul>
+        <li class="nav-item">
+          <a href="{{ url_for('products') }}" {% if request.endpoint in ['products','product_add','product_edit'] %}class="active"{% endif %}>
+            <i class="fa-solid fa-box"></i> Sản phẩm
+          </a>
+        </li>
+      </ul>
+
+      {% if user and user.is_admin() %}
+      <div class="nav-section-title" style="margin-top:8px">Hệ thống</div>
+      <ul>
+        <li class="nav-item">
+          <a href="{{ url_for('users') }}" {% if request.endpoint=='users' %}class="active"{% endif %}>
+            <i class="fa-solid fa-users"></i> Người dùng
+          </a>
+        </li>
+        <li class="nav-item">
+          {% set pending_count = pending_count_nav %}
+          <a href="{{ url_for('users_pending') }}" {% if request.endpoint=='users_pending' %}class="active"{% endif %}>
+            <i class="fa-solid fa-user-clock"></i> Chờ duyệt
+            {% if pending_count_nav > 0 %}
+            <span class="nav-badge" style="background:#EF4444">{{ pending_count_nav }}</span>
+            {% endif %}
+          </a>
+        </li>
+      </ul>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar">
+          {{ user.full_name[0] if user else 'U' }}
+        </div>
+        <div class="sidebar-user-info">
+          <strong>{{ user.full_name if user else '' }}</strong>
+          <span>{{ user.role_name if user else '' }}</span>
+        </div>
+        <a href="#" onclick="confirmLogout(event)" title="Đăng xuất" style="color:#64748B;font-size:14px">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN WRAP ===== -->
+  <div class="main-wrap">
+    <!-- Header -->
+    <header class="header">
+      <button class="btn-toggle-sidebar" id="sidebarToggle">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="header-title">
+        <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+        <p>{% block page_subtitle %}SYS VidMetric · Hệ thống quản lý Short Video{% endblock %}</p>
+      </div>
+      <div class="header-actions">
+        {% block header_actions %}{% endblock %}
+        <a href="{{ url_for('profile') }}" class="btn btn-secondary btn-sm">
+          <i class="fa-solid fa-user"></i>
+          <span class="d-none d-md-inline">{{ user.full_name.split()[0] if user else '' }}</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Flash messages -->
+    <div style="padding: 0 24px; margin-top: 12px;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">
+            <i class="fa-solid {% if cat=='success' %}fa-circle-check{% elif cat=='danger' %}fa-circle-xmark{% elif cat=='warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+            {{ msg }}
+            <button class="alert-close"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
+
+    <!-- Page Content -->
+    <main class="page-content animate-fadein">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+
+<!-- Modal xac nhan dang xuat -->
+<div class="modal-overlay" id="modalLogout">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <h4 style="display:flex;align-items:center;gap:8px">
+        <i class="fa-solid fa-right-from-bracket" style="color:var(--danger)"></i>
+        Xác nhận đăng xuất
+      </h4>
+      <button class="modal-close" onclick="closeModal('modalLogout')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:28px 24px">
+      <div style="width:64px;height:64px;border-radius:50%;background:#FEF2F2;
+                  display:flex;align-items:center;justify-content:center;
+                  margin:0 auto 16px;font-size:28px;color:#EF4444">
+        <i class="fa-solid fa-door-open"></i>
+      </div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Bạn muốn đăng xuất?</div>
+      <div style="font-size:13px;color:var(--text-muted)">
+        Phiên làm việc sẽ kết thúc. Mọi dữ liệu chưa lưu sẽ bị mất.
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:center;gap:14px">
+      <button class="btn btn-secondary" onclick="closeModal('modalLogout')">
+        <i class="fa-solid fa-arrow-left"></i> Ở lại
+      </button>
+      <a href="{{ url_for('logout') }}" class="btn btn-danger">
+        <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+function confirmLogout(e) {
+  e.preventDefault();
+  openModal('modalLogout');
+}
+// Mobile overlay fix
+const sbOverlay = document.getElementById('sidebarOverlay');
+document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+  sbOverlay.style.display = sbOverlay.style.display === 'block' ? 'none' : 'block';
+});
+</script>
+</body>
+</html>

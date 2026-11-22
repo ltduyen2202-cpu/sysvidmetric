@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Nền tảng{% endblock %}
+{% block page_title %}Quản lý nền tảng{% endblock %}
+{% block page_subtitle %}Các nền tảng mạng xã hội Short Video{% endblock %}
+
+{% block header_actions %}
+  {% if user and user.is_admin() %}
+  <button class="btn btn-primary btn-sm" onclick="openModal('modalAddPlatform')">
+    <i class="fa-solid fa-plus"></i> Thêm nền tảng
+  </button>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px">
+  {% for p in platforms %}
+  <div class="card">
+    <div class="card-header" style="border-bottom:3px solid {{ p.color }}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:40px;height:40px;border-radius:10px;background:{{ p.color }};display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px">
+          <i class="fa-brands fa-{{ p.icon or 'globe' }}"></i>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:15px">{{ p.name }}</h3>
+          <span style="font-size:11px;color:var(--text-muted)">{{ p.base_url or '' }}</span>
+        </div>
+      </div>
+      {% if p.status == 'active' %}
+        <span class="badge badge-success">Hoạt động</span>
+      {% else %}
+        <span class="badge badge-secondary">Tắt</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if p.description %}
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">{{ p.description }}</p>
+      {% endif %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="text-align:center;background:#F8FAFC;border-radius:8px;padding:10px">
+          <div style="font-size:22px;font-weight:800;color:{{ p.color }}">{{ p.videos.count() }}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Video</div>
+        </div>
+        <div style="text-align:center;background:#F8FAFC;border-radius:8px;padding:10px">
+          {% set tv = namespace(val=0) %}
+          {% for v in p.videos %}{% set tv.val = tv.val + v.views %}{% endfor %}
+          <div style="font-size:22px;font-weight:800;color:{{ p.color }}">
+            {% if tv.val >= 1000000 %}{{ (tv.val/1000000)|round(1) }}M
+            {% elif tv.val >= 1000 %}{{ (tv.val/1000)|round(1) }}K
+            {% else %}{{ tv.val }}{% endif %}
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)">Lượt xem</div>
+        </div>
+      </div>
+      {% if user and user.is_admin() %}
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" style="flex:1"
+          onclick="fillEditModal('modalEditPlatform', {
+            id: '{{ p.id }}', name: '{{ p.name }}', icon: '{{ p.icon or '' }}',
+            color: '{{ p.color }}', base_url: '{{ p.base_url or '' }}',
+            description: '{{ p.description|replace("'","") or '' }}', status: '{{ p.status }}'
+          })">
+          <i class="fa-solid fa-pen"></i> Sửa
+        </button>
+        <form method="POST" action="{{ url_for('platform_delete', pid=p.id) }}"
+              data-confirm="Xóa nền tảng '{{ p.name }}'?">
+          <button class="btn btn-sm" style="background:#FEE2E2;color:#B91C1C;border:1px solid #FECACA">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="grid-column:1/-1">
+    <div class="empty-state"><i class="fa-solid fa-layer-group"></i><h4>Chưa có nền tảng nào</h4></div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Modal Add -->
+{% if user and user.is_admin() %}
+<div class="modal-overlay" id="modalAddPlatform">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h4><i class="fa-solid fa-plus"></i> Thêm nền tảng mới</h4>
+      <button class="modal-close" onclick="closeModal('modalAddPlatform')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form method="POST" action="{{ url_for('platform_add') }}">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tên nền tảng <span class="req">*</span></label>
+            <input type="text" name="name" class="form-control" required placeholder="TikTok, YouTube Shorts,..."/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Icon (Font Awesome brand)</label>
+            <input type="text" name="icon" class="form-control" placeholder="tiktok, youtube, facebook,..."/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Màu đại diện</label>
+            <input type="color" name="color" class="form-control" value="#4A90D9" style="height:40px;cursor:pointer"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">URL gốc</label>
+            <input type="url" name="base_url" class="form-control" placeholder="https://..."/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mô tả</label>
+          <textarea name="description" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalAddPlatform')">Hủy</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Edit -->
+<div class="modal-overlay" id="modalEditPlatform">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h4><i class="fa-solid fa-pen"></i> Chỉnh sửa nền tảng</h4>
+      <button class="modal-close" onclick="closeModal('modalEditPlatform')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form method="POST" id="formEditPlatform">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tên nền tảng <span class="req">*</span></label>
+            <input type="text" name="name" class="form-control" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Icon</label>
+            <input type="text" name="icon" class="form-control"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Màu đại diện</label>
+            <input type="color" name="color" class="form-control" style="height:40px;cursor:pointer"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Trạng thái</label>
+            <select name="status" class="form-control">
+              <option value="active">Hoạt động</option>
+              <option value="inactive">Tắt</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL gốc</label>
+          <input type="text" name="base_url" class="form-control"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mô tả</label>
+          <textarea name="description" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditPlatform')">Hủy</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fillEditModal(modalId, data) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  const form = modal.querySelector('form');
+  form.action = '/platforms/' + data.id + '/edit';
+  Object.keys(data).forEach(key => {
+    if (key === 'id') return;
+    const el = form.querySelector('[name="'+key+'"]');
+    if (el) el.value = data[key];
+  });
+  openModal(modalId);
+}
+</script>
+{% endblock %}

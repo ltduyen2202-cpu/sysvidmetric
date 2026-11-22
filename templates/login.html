@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đăng nhập — SYS VidMetric</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      background: #F1F5F9;
+    }
+    /* Ben trai: Banner quang cao */
+    .auth-banner {
+      flex: 1;
+      background: linear-gradient(145deg, #020818 0%, #0F172A 40%, #0D2444 70%, #020818 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 40px;
+      position: relative; overflow: hidden;
+    }
+
+    /* Lưới công nghệ */
+    .tech-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(37,99,235,.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37,99,235,.12) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove {
+      0%   { background-position: 0 0; }
+      100% { background-position: 40px 40px; }
+    }
+
+    /* Hạt nổi */
+    .particles { position:absolute; inset:0; overflow:hidden; }
+    .particles span {
+      position: absolute;
+      display: block;
+      border-radius: 50%;
+      background: rgba(37,99,235,.3);
+      animation: float linear infinite;
+    }
+    .particles span:nth-child(1)  { width:6px;  height:6px;  left:10%; top:20%; animation-duration:12s; animation-delay:0s; }
+    .particles span:nth-child(2)  { width:4px;  height:4px;  left:25%; top:60%; animation-duration:18s; animation-delay:2s; }
+    .particles span:nth-child(3)  { width:8px;  height:8px;  left:50%; top:30%; animation-duration:15s; animation-delay:1s; }
+    .particles span:nth-child(4)  { width:3px;  height:3px;  left:70%; top:70%; animation-duration:20s; animation-delay:3s; }
+    .particles span:nth-child(5)  { width:5px;  height:5px;  left:80%; top:15%; animation-duration:14s; animation-delay:1.5s; }
+    .particles span:nth-child(6)  { width:7px;  height:7px;  left:35%; top:80%; animation-duration:16s; animation-delay:4s; }
+    .particles span:nth-child(7)  { width:4px;  height:4px;  left:60%; top:45%; animation-duration:11s; animation-delay:0.5s; }
+    .particles span:nth-child(8)  { width:6px;  height:6px;  left:90%; top:50%; animation-duration:17s; animation-delay:2.5s; background:rgba(238,77,45,.3); }
+    @keyframes float {
+      0%   { transform: translateY(0) scale(1);   opacity:.8; }
+      50%  { transform: translateY(-80px) scale(1.2); opacity:.4; }
+      100% { transform: translateY(-160px) scale(0.8); opacity:0; }
+    }
+
+    /* Vòng tròn glow */
+    .glow-circle {
+      position: absolute; border-radius: 50%;
+      filter: blur(60px); pointer-events: none;
+    }
+    .glow-1 { width:300px; height:300px; background:rgba(37,99,235,.15); top:-80px; left:-80px; }
+    .glow-2 { width:200px; height:200px; background:rgba(238,77,45,.1);  bottom:-40px; right:-40px; }
+
+    .auth-banner h1 {
+      font-size: 32px; font-weight: 900; color: #fff;
+      text-align: center; margin-bottom: 8px; line-height: 1.2;
+      text-shadow: 0 0 30px rgba(37,99,235,.5);
+    }
+    .auth-banner p {
+      font-size: 13px; color: #94A3B8; text-align: center; margin-bottom: 24px;
+    }
+
+    /* Metric cards */
+    .banner-metrics {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      width: 100%; max-width: 320px; margin: 16px 0;
+    }
+    .banner-metric-card {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; padding: 14px 16px;
+      display: flex; flex-direction: column; align-items: center;
+      transition: all .3s;
+    }
+    .banner-metric-card:hover {
+      background: rgba(37,99,235,.2);
+      border-color: rgba(37,99,235,.4);
+      transform: translateY(-2px);
+    }
+    .bm-icon { font-size: 20px; color: #60A5FA; margin-bottom: 6px; }
+    .bm-val  { font-size: 18px; font-weight: 800; color: #fff; line-height: 1; }
+    .bm-lbl  { font-size: 11px; color: #64748B; margin-top: 3px; }
+
+    /* Thanh hiệu suất */
+    .banner-perf {
+      width: 100%; max-width: 320px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px; padding: 14px 16px; margin-top: 4px;
+    }
+    .banner-perf-title {
+      font-size: 11px; font-weight: 700; color: #60A5FA;
+      text-transform: uppercase; letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+    .perf-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 7px;
+      font-size: 11px; color: #94A3B8;
+    }
+    .perf-row span:first-child { width: 55px; }
+    .perf-row span:last-child  { width: 30px; text-align: right; color: #60A5FA; font-weight: 700; }
+    .perf-bar {
+      flex: 1; height: 5px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden;
+    }
+    .perf-fill {
+      height: 100%; border-radius: 999px;
+      animation: fillAnim 1.5s ease-out forwards;
+      transform-origin: left;
+    }
+    @keyframes fillAnim {
+      from { width: 0 !important; }
+    }
+    .platform-pills {
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      margin-bottom: 36px;
+    }
+    .platform-pill {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 16px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; color: #fff;
+      border: 1.5px solid rgba(255,255,255,.15);
+      background: rgba(255,255,255,.07);
+    }
+    .platform-pill i { font-size: 14px; }
+    .auth-banner-logo {
+      width: 80px; height: 80px; border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px rgba(37,99,235,.5), 0 0 60px rgba(37,99,235,.2);
+      border: 2px solid rgba(37,99,235,.4);
+    }
+
+    /* Ben phai: Form */
+    .auth-form-side {
+      width: 480px; min-height: 100vh;
+      background: #fff;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 44px;
+      box-shadow: -4px 0 24px rgba(0,0,0,.08);
+    }
+    .auth-form-side .form-wrap { width: 100%; max-width: 380px; }
+    .form-title { font-size: 24px; font-weight: 800; color: #0F172A; margin-bottom: 4px; }
+    .form-subtitle { font-size: 13px; color: #64748B; margin-bottom: 28px; }
+
+    .input-icon-wrap { position: relative; }
+    .input-icon-wrap .ico {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      color: #CBD5E1; font-size: 15px; pointer-events: none;
+    }
+    .input-icon-wrap input {
+      padding-left: 40px !important;
+    }
+    .input-icon-wrap .btn-eye {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: #94A3B8; padding: 4px;
+    }
+    .input-icon-wrap .btn-eye:hover { color: #2563EB; }
+
+    .remember-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .remember-row label {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 13px; color: #475569; cursor: pointer;
+    }
+    .remember-row input[type="checkbox"] { accent-color: #2563EB; width: 15px; height: 15px; }
+
+    .btn-auth {
+      width: 100%; padding: 13px;
+      background: #2563EB; color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-auth:hover { background: #1D4ED8; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,99,235,.4); }
+
+    .divider-or {
+      display: flex; align-items: center; gap: 12px;
+      margin: 20px 0; color: #CBD5E1; font-size: 12px;
+    }
+    .divider-or::before, .divider-or::after {
+      content: ''; flex: 1; height: 1px; background: #E2E8F0;
+    }
+
+    .auth-footer {
+      text-align: center; font-size: 13px; color: #64748B; margin-top: 20px;
+    }
+    .auth-footer a { color: #2563EB; font-weight: 600; text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    .alert { margin-bottom: 16px; }
+
+    @media (max-width: 900px) {
+      .auth-banner { display: none; }
+      .auth-form-side { width: 100%; padding: 32px 24px; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="auth-page">
+
+  <!-- Banner trái -->
+  <div class="auth-banner">
+    <!-- Hiệu ứng lưới công nghệ -->
+    <div class="tech-grid"></div>
+    <!-- Các hạt nổi -->
+    <div class="particles">
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <!-- Vòng tròn trang trí -->
+    <div class="glow-circle glow-1"></div>
+    <div class="glow-circle glow-2"></div>
+
+    <div style="position:relative;z-index:2;width:100%;display:flex;flex-direction:column;align-items:center">
+      <!-- Logo -->
+      <div class="auth-banner-logo">
+        <img src="{{ url_for('static', filename='logo.svg') }}" alt="SYS VidMetric"
+             style="width:72px;height:72px;border-radius:20px"/>
+      </div>
+      <h1>SYS VidMetric</h1>
+      <p>Hệ thống quản lý &amp; phân tích<br/>Short Video đa nền tảng</p>
+
+      <!-- Nền tảng pills -->
+      <div class="platform-pills">
+        <div class="platform-pill"><i class="fa-brands fa-tiktok"></i> TikTok</div>
+        <div class="platform-pill"><i class="fa-brands fa-youtube"></i> YouTube Shorts</div>
+        <div class="platform-pill"><i class="fa-brands fa-facebook"></i> Facebook Reels</div>
+        <div class="platform-pill"><i class="fa-brands fa-instagram"></i> Instagram Reels</div>
+        <div class="platform-pill" style="background:rgba(238,77,45,.2);border-color:rgba(238,77,45,.4)">
+          <i class="fa-solid fa-bag-shopping"></i> Shopee Video
+        </div>
+      </div>
+
+      <!-- Chỉ số nổi bật -->
+      <div class="banner-metrics">
+        <div class="banner-metric-card">
+          <div class="bm-icon"><i class="fa-solid fa-chart-line"></i></div>
+          <div class="bm-val">Real-time</div>
+          <div class="bm-lbl">Analytics</div>
+        </div>
+        <div class="banner-metric-card">
+          <div class="bm-icon"><i class="fa-solid fa-layer-group"></i></div>
+          <div class="bm-val">5</div>
+          <div class="bm-lbl">Nền tảng</div>
+        </div>
+        <div class="banner-metric-card">
+          <div class="bm-icon"><i class="fa-solid fa-cart-shopping"></i></div>
+          <div class="bm-val">TMĐT</div>
+          <div class="bm-lbl">Tích hợp</div>
+        </div>
+        <div class="banner-metric-card">
+          <div class="bm-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <div class="bm-val">3</div>
+          <div class="bm-lbl">Cấp quyền</div>
+        </div>
+      </div>
+
+      <!-- Thanh tiến trình hiệu suất giả lập -->
+      <div class="banner-perf">
+        <div class="banner-perf-title"><i class="fa-solid fa-bolt"></i> Hiệu suất hệ thống</div>
+        <div class="perf-row">
+          <span>TikTok</span>
+          <div class="perf-bar"><div class="perf-fill" style="width:85%;background:#010101"></div></div>
+          <span>85%</span>
+        </div>
+        <div class="perf-row">
+          <span>Shopee</span>
+          <div class="perf-bar"><div class="perf-fill" style="width:72%;background:#EE4D2D"></div></div>
+          <span>72%</span>
+        </div>
+        <div class="perf-row">
+          <span>Facebook</span>
+          <div class="perf-bar"><div class="perf-fill" style="width:63%;background:#1877F2"></div></div>
+          <span>63%</span>
+        </div>
+      </div>
+
+      <p style="margin-top:20px;font-size:11px;color:#334155">
+        © 2026 Công ty SYS Việt Nam · Đồ án tốt nghiệp
+      </p>
+    </div>
+  </div>
+
+  <!-- Form phải -->
+  <div class="auth-form-side">
+    <div class="form-wrap">
+      <div class="form-title">Đăng nhập</div>
+      <div class="form-subtitle">Nhập thông tin tài khoản để tiếp tục</div>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">
+            <i class="fa-solid {% if cat=='success' %}fa-circle-check{% elif cat=='danger' %}fa-circle-xmark{% elif cat=='warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+            <span>{{ msg|safe }}</span>
+            <button class="alert-close"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" autocomplete="on">
+        <div class="form-group">
+          <label class="form-label">Tên đăng nhập hoặc Email</label>
+          <div class="input-icon-wrap">
+            <i class="ico fa-solid fa-user"></i>
+            <input type="text" name="username" class="form-control"
+                   value="{{ username_val or '' }}"
+                   placeholder="username hoặc email@..." required autofocus
+                   autocomplete="username"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mật khẩu</label>
+          <div class="input-icon-wrap">
+            <i class="ico fa-solid fa-lock"></i>
+            <input type="password" name="password" id="pwInput" class="form-control"
+                   placeholder="Nhập mật khẩu" required autocomplete="current-password"/>
+            <button type="button" class="btn-eye" onclick="togglePw('pwInput','pwEye')">
+              <i class="fa-solid fa-eye" id="pwEye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="remember-row">
+          <label>
+            <input type="checkbox" name="remember" value="1"/> Ghi nhớ đăng nhập
+          </label>
+        </div>
+
+        <button type="submit" class="btn-auth">
+          <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+        </button>
+      </form>
+
+      <div class="divider-or">hoặc</div>
+
+      <div class="auth-footer">
+        Chưa có tài khoản?
+        <a href="{{ url_for('register') }}">Đăng ký ngay</a>
+      </div>
+
+
+    </div>
+  </div>
+</div>
+
+<script>
+function togglePw(inputId, eyeId) {
+  const inp = document.getElementById(inputId);
+  const eye = document.getElementById(eyeId);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  eye.className = inp.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+}
+// Auto close alerts
+document.querySelectorAll('.alert').forEach(el => {
+  setTimeout(() => { el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, 5000);
+  el.querySelector('.alert-close')?.addEventListener('click', ()=>el.remove());
+});
+</script>
+</body>
+</html>

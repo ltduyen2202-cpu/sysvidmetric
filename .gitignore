@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+sys_video.db
+static/uploads/
+.env
+*.log

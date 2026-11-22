@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Sản phẩm{% endblock %}
+{% block page_title %}Quản lý Sản phẩm{% endblock %}
+{% block page_subtitle %}Danh mục sản phẩm thương mại điện tử · {{ pagination.total }} sản phẩm{% endblock %}
+
+{% block header_actions %}
+  {% if user and user.is_manager() %}
+  <a href="{{ url_for('product_import') }}" class="btn btn-secondary btn-sm">
+    <i class="fa-solid fa-file-excel"></i> Import Excel
+  </a>
+  <a href="{{ url_for('product_add') }}" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-plus"></i> Thêm sản phẩm
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body" style="padding:14px 20px">
+    <form method="GET" class="search-bar">
+      <div class="search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" name="q" value="{{ q }}" placeholder="Tìm kiếm sản phẩm..."/>
+      </div>
+      <select name="category" class="form-control" style="width:180px">
+        <option value="">Tất cả danh mục</option>
+        {% for c in categories %}
+        <option value="{{ c.id }}" {% if cat_id|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-filter"></i> Lọc</button>
+      <a href="{{ url_for('products') }}" class="btn btn-secondary btn-sm"><i class="fa-solid fa-rotate"></i> Reset</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Sản phẩm</th>
+          <th>Danh mục</th>
+          <th>SKU</th>
+          <th class="num">Giá</th>
+          <th class="num">Tồn kho</th>
+          <th class="num">Đã bán</th>
+          <th class="num">Video</th>
+          <th>Trạng thái</th>
+          <th style="text-align:center">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px">{{ (pagination.page-1)*10 + loop.index }}</td>
+          <td style="max-width:220px">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div>
+            {% if p.description %}
+            <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.description }}</div>
+            {% endif %}
+          </td>
+          <td><span class="tag">{{ p.category.name if p.category else 'Chưa phân loại' }}</span></td>
+          <td style="font-size:12px;color:var(--text-muted)">{{ p.sku or '—' }}</td>
+          <td class="num" style="font-weight:600;color:var(--primary)">
+            {{ '{:,.0f}'.format(p.price).replace(',','.') }} đ
+          </td>
+          <td class="num">
+            <span style="color:{% if p.stock < 50 %}var(--danger){% elif p.stock < 100 %}var(--warning){% else %}var(--success){% endif %}">
+              {{ p.stock }}
+            </span>
+          </td>
+          <td class="num">{{ '{:,}'.format(p.sold).replace(',','.') }}</td>
+          <td class="num">{{ p.videos.count() }}</td>
+          <td>
+            {% if p.status == 'active' %}
+              <span class="badge badge-success">Còn hàng</span>
+            {% else %}
+              <span class="badge badge-secondary">Ngừng bán</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center;white-space:nowrap">
+            {% if user and user.is_manager() %}
+            <a href="{{ url_for('product_edit', pid=p.id) }}" class="btn btn-icon btn-xs" title="Sửa">
+              <i class="fa-solid fa-pen"></i>
+            </a>
+            <form method="POST" action="{{ url_for('product_delete', pid=p.id) }}" style="display:inline"
+                  data-confirm="Xóa sản phẩm '{{ p.name }}'?">
+              <button class="btn btn-icon btn-xs" style="background:#FEE2E2;color:#B91C1C;border-color:#FECACA">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10">
+          <div class="empty-state"><i class="fa-solid fa-box"></i><h4>Không tìm thấy sản phẩm</h4></div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagination.pages > 1 %}
+  <div style="padding:0 20px 16px">
+    <div class="pagination">
+      {% if pagination.has_prev %}
+      <div class="page-item">
+        <a href="{{ url_for('products', page=pagination.prev_num, q=q, category=cat_id) }}">
+          <i class="fa-solid fa-chevron-left" style="font-size:11px"></i>
+        </a>
+      </div>
+      {% endif %}
+      {% for pg in pagination.iter_pages() %}
+        {% if pg %}
+        <div class="page-item {% if pg == pagination.page %}active{% endif %}">
+          <a href="{{ url_for('products', page=pg, q=q, category=cat_id) }}">{{ pg }}</a>
+        </div>
+        {% endif %}
+      {% endfor %}
+      {% if pagination.has_next %}
+      <div class="page-item">
+        <a href="{{ url_for('products', page=pagination.next_num, q=q, category=cat_id) }}">
+          <i class="fa-solid fa-chevron-right" style="font-size:11px"></i>
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

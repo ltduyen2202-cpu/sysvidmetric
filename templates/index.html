@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Tổng quan hệ thống · Dữ liệu cập nhật theo thời gian thực{% endblock %}
+
+{% block header_actions %}
+  {% if user and user.is_manager() %}
+  <a href="{{ url_for('video_add') }}" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-plus"></i> Thêm video
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- === Platform Filter === -->
+<div class="card mb-6" style="margin-bottom:20px">
+  <div class="card-body" style="padding:16px 20px">
+    <div class="flex items-center gap-4 flex-wrap">
+      <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Lọc theo nền tảng</span>
+      <div class="platform-filter">
+        <label>
+          <input type="radio" name="platform_filter" value="" checked> Tất cả
+        </label>
+        {% for plat in platform_stats %}
+        <label>
+          <input type="radio" name="platform_filter" value="{{ loop.index }}"> {{ plat.name }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === Metric Cards (giong hinh goi y) === -->
+<div class="metric-grid-2 mb-6" style="margin-bottom:20px">
+  <div class="metric-box">
+    <div class="metric-label">
+      Tổng video <i class="fa-regular fa-film"></i>
+    </div>
+    <div class="metric-value" id="stat-videos" data-value="{{ total_videos }}">
+      {{ '{:,}'.format(total_videos).replace(',','.') }}
+    </div>
+    <div class="metric-sub">{{ published_count }} đã đăng · {{ draft_count }} bản nháp</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">
+      Tổng lượt xem <i class="fa-regular fa-eye"></i>
+    </div>
+    <div class="metric-value" id="stat-views" data-value="{{ total_views }}">
+      {{ '{:,}'.format(total_views).replace(',','.') }}
+    </div>
+    <div class="metric-sub">Trên tất cả nền tảng</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">
+      Lượt tương tác <i class="fa-regular fa-heart"></i>
+    </div>
+    <div class="metric-value" id="stat-interactions" data-value="{{ total_interactions }}">
+      {{ '{:,}'.format(total_interactions).replace(',','.') }}
+    </div>
+    <div class="metric-sub">Like, comment, share, lưu</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">
+      Đơn hàng <i class="fa-regular fa-cart-shopping"></i>
+    </div>
+    <div class="metric-value" id="stat-orders" data-value="{{ total_orders }}">
+      {{ '{:,}'.format(total_orders).replace(',','.') }}
+    </div>
+    <div class="metric-sub">Từ Short Video</div>
+  </div>
+</div>
+
+<!-- === Hiệu suất theo nền tảng + Biểu đồ === -->
+<div class="grid-2" style="margin-bottom:20px">
+  <!-- Platform bars -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-layer-group" style="color:var(--primary);margin-right:6px"></i>Hiệu suất theo nền tảng</h3>
+      <a href="{{ url_for('analytics') }}" class="btn btn-ghost btn-sm">Chi tiết</a>
+    </div>
+    <div class="card-body">
+      <div class="platform-bars">
+        {% for plat in platform_stats %}
+        {% set pct = (plat.views / max_views * 100) if max_views > 0 else 0 %}
+        <div class="platform-bar-item">
+          <div class="platform-bar-top">
+            <span class="platform-bar-name" style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:{{plat.color}};display:inline-block"></span>
+              {{ plat.name }}
+            </span>
+            <span class="platform-bar-value">{{ '{:,}'.format(plat.views).replace(',','.') }} lượt xem</span>
+          </div>
+          <div class="platform-bar-track">
+            <div class="platform-bar-fill" style="width:{{ pct }}%;background:{{ plat.color }}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Tỷ lệ tương tác & Đơn hàng/1000 (giống hình gợi ý) -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-end">
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">
+            Tỷ lệ tương tác theo lượt xem
+            <button style="background:#F1F5F9;border:none;cursor:pointer;width:24px;height:24px;border-radius:50%;margin-left:6px">
+              <i class="fa-solid fa-arrow-down" style="font-size:10px"></i>
+            </button>
+          </div>
+          <div style="font-size:28px;font-weight:700;color:var(--text)" id="stat-engagement">{{ engagement_rate }}%</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Đơn hàng / 1.000 lượt xem</div>
+          <div style="font-size:28px;font-weight:700;color:var(--text)" id="stat-op1k">{{ orders_per_1000 }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Line chart 30 ngày -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-area" style="color:var(--success);margin-right:6px"></i>Lượt xem 30 ngày qua</h3>
+      <span style="font-size:12px;color:var(--text-muted)">Tất cả video</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:260px">
+        <canvas id="chartDaily"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === Row 2: Top videos + Campaigns + Doughnut === -->
+<div style="display:grid;grid-template-columns:1fr 1fr 320px;gap:20px;margin-bottom:20px">
+  <!-- Top 5 videos -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-trophy" style="color:var(--warning);margin-right:6px"></i>Top 5 video nổi bật</h3>
+      <a href="{{ url_for('videos') }}" class="btn btn-ghost btn-sm">Xem tất cả</a>
+    </div>
+    <div class="card-body">
+      {% for v in top_videos %}
+      {% set ranks = ['gold','silver','bronze','',''] %}
+      <div class="top-video-row">
+        <div class="top-video-rank {{ ranks[loop.index0] }}">{{ loop.index }}</div>
+        <div class="top-video-info">
+          <div class="top-video-title">
+            <a href="{{ url_for('video_detail', vid=v.id) }}" style="color:var(--text);text-decoration:none">
+              {{ v.title }}
+            </a>
+          </div>
+          <div class="top-video-sub">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{{v.platform.color if v.platform else '#999'}};margin-right:4px"></span>
+            {{ v.platform.name if v.platform else 'N/A' }}
+            {% if v.campaign %}&nbsp;·&nbsp;{{ v.campaign.name }}{% endif %}
+          </div>
+        </div>
+        <div class="top-video-views">{{ '{:,}'.format(v.views).replace(',','.') }}</div>
+      </div>
+      {% else %}
+      <div class="empty-state"><i class="fa-solid fa-film"></i><p>Chưa có video</p></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Chiến dịch đang chạy -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-bullhorn" style="color:var(--danger);margin-right:6px"></i>Chiến dịch đang chạy</h3>
+      <a href="{{ url_for('campaigns') }}" class="btn btn-ghost btn-sm">Quản lý</a>
+    </div>
+    <div class="card-body">
+      {% for c in running_campaigns %}
+      <div style="padding:12px 0;border-bottom:1px solid #F1F5F9">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <a href="{{ url_for('campaign_detail', cid=c.id) }}"
+             style="font-size:13px;font-weight:600;color:var(--text);text-decoration:none;flex:1;margin-right:8px">
+            {{ c.name }}
+          </a>
+          <span class="badge badge-success">Đang chạy</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted)">
+          <i class="fa-regular fa-calendar"></i>
+          {{ c.start_date.strftime('%d/%m') if c.start_date else '' }} —
+          {{ c.end_date.strftime('%d/%m/%Y') if c.end_date else '' }}
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+          <i class="fa-solid fa-film"></i> {{ c.videos.count() }} video &nbsp;·&nbsp;
+          <i class="fa-solid fa-sack-dollar"></i>
+          {{ '{:,.0f}'.format(c.budget).replace(',','.') }} đ ngân sách
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <i class="fa-solid fa-bullhorn"></i>
+        <h4>Không có chiến dịch nào đang chạy</h4>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Doughnut chart trạng thái video -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-pie" style="color:var(--info);margin-right:6px"></i>Trạng thái video</h3>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:200px">
+        <canvas id="chartStatus"></canvas>
+      </div>
+      <div style="margin-top:16px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
+          <span style="display:flex;align-items:center;gap:6px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#10B981;display:inline-block"></span>Đã đăng
+          </span>
+          <strong>{{ published_count }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
+          <span style="display:flex;align-items:center;gap:6px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#F59E0B;display:inline-block"></span>Bản nháp
+          </span>
+          <strong>{{ draft_count }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
+          <span style="display:flex;align-items:center;gap:6px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#94A3B8;display:inline-block"></span>Lưu trữ
+          </span>
+          <strong>{{ archived_count }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === Recent videos table === -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-clock-rotate-left" style="color:var(--secondary);margin-right:6px"></i>Video gần đây</h3>
+    <a href="{{ url_for('videos') }}" class="btn btn-ghost btn-sm">Xem tất cả</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Video</th>
+          <th>Nền tảng</th>
+          <th class="num">Lượt xem</th>
+          <th class="num">Tương tác</th>
+          <th class="num">Đơn hàng</th>
+          <th class="num">Doanh thu</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in recent_videos %}
+        <tr>
+          <td>
+            <a href="{{ url_for('video_detail', vid=v.id) }}"
+               style="font-weight:600;color:var(--text);text-decoration:none;display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+               title="{{ v.title }}">{{ v.title }}</a>
+            <span style="font-size:11px;color:var(--text-muted)">
+              {{ v.published_at.strftime('%d/%m/%Y') if v.published_at else v.created_at.strftime('%d/%m/%Y') }}
+            </span>
+          </td>
+          <td>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px">
+              <span style="width:8px;height:8px;border-radius:50%;background:{{v.platform.color if v.platform else '#999'}};flex-shrink:0"></span>
+              {{ v.platform.name if v.platform else '—' }}
+            </span>
+          </td>
+          <td class="num">{{ '{:,}'.format(v.views).replace(',','.') }}</td>
+          <td class="num">{{ '{:,}'.format(v.likes+v.comments+v.shares+v.saves).replace(',','.') }}</td>
+          <td class="num">{{ '{:,}'.format(v.orders).replace(',','.') }}</td>
+          <td class="num">{{ '{:,.0f}'.format(v.revenue).replace(',','.') }} đ</td>
+          <td>
+            {% if v.status == 'published' %}
+              <span class="badge badge-success">Đã đăng</span>
+            {% elif v.status == 'draft' %}
+              <span class="badge badge-warning">Bản nháp</span>
+            {% else %}
+              <span class="badge badge-secondary">Lưu trữ</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const chartLabels = {{ chart_labels | tojson }};
+const chartData   = {{ chart_data   | tojson }};
+
+// Line chart daily
+makeLineChart('chartDaily', chartLabels, [{
+  label: 'Lượt xem',
+  data: chartData,
+  borderColor: '#2563EB',
+  backgroundColor: 'rgba(37,99,235,.08)',
+  fill: true,
+  tension: .4,
+  pointRadius: 2,
+}]);
+
+// Doughnut status
+makeDoughnutChart('chartStatus',
+  ['Đã đăng','Bản nháp','Lưu trữ'],
+  [{{ published_count }}, {{ draft_count }}, {{ archived_count }}],
+  ['#10B981','#F59E0B','#94A3B8']
+);
+</script>
+{% endblock %}

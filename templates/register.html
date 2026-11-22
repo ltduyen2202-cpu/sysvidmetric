@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đăng ký tài khoản — SYS VidMetric</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <style>
+    .auth-page { min-height: 100vh; background: #F1F5F9; }
+
+    /* Header thanh ngang */
+    .reg-header {
+      background: #fff; border-bottom: 1px solid #E2E8F0;
+      padding: 0 32px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .reg-header-logo { display: flex; align-items: center; gap: 10px; }
+    .reg-header-logo-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: #2563EB; display: flex; align-items: center;
+      justify-content: center; color: #fff; font-weight: 800; font-size: 16px;
+    }
+    .reg-header-logo span { font-size: 16px; font-weight: 700; color: #0F172A; }
+
+    /* Content */
+    .reg-content {
+      max-width: 900px; margin: 0 auto; padding: 36px 24px 60px;
+    }
+    .reg-title { font-size: 26px; font-weight: 800; color: #0F172A; margin-bottom: 4px; text-align: center; }
+    .reg-subtitle { font-size: 14px; color: #64748B; text-align: center; margin-bottom: 32px; }
+
+    /* Buoc chon loai tai khoan */
+    .role-step { margin-bottom: 28px; }
+    .role-step-label {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: #64748B; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .role-step-label span {
+      width: 22px; height: 22px; border-radius: 50%; background: #2563EB;
+      color: #fff; font-size: 11px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+
+    .role-cards {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    }
+    .role-card {
+      border: 2px solid #E2E8F0; border-radius: 14px; padding: 20px 18px;
+      cursor: pointer; transition: all .2s; background: #fff; position: relative;
+    }
+    .role-card:hover { border-color: #93C5FD; box-shadow: 0 4px 16px rgba(37,99,235,.1); }
+    .role-card.selected { border-color: var(--rc-color); box-shadow: 0 4px 20px rgba(37,99,235,.15); }
+    .role-card input[type="radio"] { display: none; }
+    .role-card-check {
+      position: absolute; top: 12px; right: 12px;
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid #CBD5E1; background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s;
+    }
+    .role-card.selected .role-card-check {
+      background: var(--rc-color); border-color: var(--rc-color);
+    }
+    .role-card.selected .role-card-check::after {
+      content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff;
+    }
+    .role-card-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 12px;
+    }
+    .role-card-title { font-size: 15px; font-weight: 700; color: #0F172A; margin-bottom: 5px; }
+    .role-card-desc { font-size: 12px; color: #64748B; line-height: 1.5; margin-bottom: 10px; }
+    .role-card-features { list-style: none; padding: 0; }
+    .role-card-features li {
+      font-size: 11.5px; color: #475569; padding: 2px 0;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .role-card-features li::before {
+      content: '✓'; color: var(--rc-color); font-weight: 700; font-size: 11px;
+    }
+
+    /* Form info */
+    .reg-form-card {
+      background: #fff; border-radius: 16px; padding: 28px 32px;
+      border: 1px solid #E2E8F0; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+
+    /* Password strength */
+    .pw-strength { margin-top: 8px; }
+    .pw-strength-bar {
+      height: 4px; border-radius: 2px; background: #F1F5F9;
+      overflow: hidden; margin-bottom: 4px;
+    }
+    .pw-strength-fill { height: 100%; border-radius: 2px; transition: all .3s; width: 0; }
+    .pw-strength-text { font-size: 11px; }
+
+    .pw-reqs { margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .pw-req {
+      font-size: 11px; padding: 2px 8px; border-radius: 999px;
+      background: #F1F5F9; color: #94A3B8;
+      display: flex; align-items: center; gap: 4px;
+      transition: all .2s;
+    }
+    .pw-req.ok { background: #DCFCE7; color: #15803D; }
+
+    .input-icon-wrap { position: relative; }
+    .input-icon-wrap .ico {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      color: #CBD5E1; font-size: 15px; pointer-events: none;
+    }
+    .input-icon-wrap input { padding-left: 40px !important; }
+    .input-icon-wrap .btn-eye {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: #94A3B8;
+    }
+    .input-icon-wrap .btn-eye:hover { color: #2563EB; }
+
+    .btn-auth {
+      width: 100%; padding: 13px;
+      background: #2563EB; color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-auth:hover { background: #1D4ED8; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,99,235,.4); }
+    .btn-auth:disabled { background: #CBD5E1; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    @media (max-width: 700px) {
+      .role-cards { grid-template-columns: 1fr; }
+      .reg-form-card { padding: 20px 18px; }
+    }
+  </style>
+</head>
+<body class="auth-page">
+
+<!-- Header -->
+<div class="reg-header">
+  <div class="reg-header-logo">
+    <div class="reg-header-logo-icon">S</div>
+    <span>SYS VidMetric</span>
+  </div>
+  <div style="font-size:13px;color:#64748B">
+    Đã có tài khoản?
+    <a href="{{ url_for('login') }}" style="color:#2563EB;font-weight:600;text-decoration:none;margin-left:4px">Đăng nhập</a>
+  </div>
+</div>
+
+<div class="reg-content">
+  <h1 class="reg-title">Tạo tài khoản mới</h1>
+  <p class="reg-subtitle">Chọn loại tài khoản phù hợp với vai trò của bạn trong hệ thống</p>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }}" style="margin-bottom:16px">
+        <i class="fa-solid {% if cat=='success' %}fa-circle-check{% elif cat=='danger' %}fa-circle-xmark{% else %}fa-circle-info{% endif %}"></i>
+        <span>{{ msg|safe }}</span>
+        <button class="alert-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST" id="regForm" novalidate>
+
+    <!-- BƯỚC 1: Chọn loại tài khoản -->
+    <div class="role-step">
+      <div class="role-step-label"><span>1</span> Chọn loại tài khoản</div>
+      <div class="role-cards">
+
+        {% for role_key, rd in role_descriptions.items() %}
+        <label class="role-card {% if (form_data.get('role') or 'viewer') == role_key %}selected{% endif %}"
+               style="--rc-color: {{ rd.color }}"
+               onclick="selectRole('{{ role_key }}', this)">
+          <input type="radio" name="role" value="{{ role_key }}"
+                 {% if (form_data.get('role') or 'viewer') == role_key %}checked{% endif %}/>
+          <div class="role-card-check"></div>
+          <div class="role-card-icon"
+               style="background: {{ rd.color }}20; color: {{ rd.color }}">
+            <i class="fa-solid {{ rd.icon }}"></i>
+          </div>
+          <div class="role-card-title">{{ rd.label }}</div>
+          <div class="role-card-desc">{{ rd.desc }}</div>
+          {% if role_key in ('admin','manager') %}
+          <div style="margin-top:8px;padding:6px 10px;background:#FEF9C3;border-radius:6px;
+                      font-size:11px;color:#92400E;border-left:3px solid #F59E0B">
+            <i class="fa-solid fa-clock"></i> Yêu cầu duyệt từ Quản trị viên
+          </div>
+          {% else %}
+          <div style="margin-top:8px;padding:6px 10px;background:#DCFCE7;border-radius:6px;
+                      font-size:11px;color:#15803D;border-left:3px solid #10B981">
+            <i class="fa-solid fa-bolt"></i> Kích hoạt ngay, không cần duyệt
+          </div>
+          {% endif %}
+          <ul class="role-card-features" style="margin-top:8px">
+            {% for feat in rd.features %}
+            <li>{{ feat }}</li>
+            {% endfor %}
+          </ul>
+        </label>
+        {% endfor %}
+
+      </div>
+
+      <!-- Thong bao dong khi chon admin/manager -->
+      <div id="pendingNotice" style="display:none;margin-top:12px;padding:12px 16px;
+           background:#FEF9C3;border-radius:10px;border:1px solid #FDE68A;font-size:13px;color:#92400E">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <strong>Lưu ý:</strong> Loại tài khoản này cần được <strong>Quản trị viên xét duyệt</strong>
+        trước khi sử dụng. Sau khi đăng ký, tài khoản sẽ ở trạng thái
+        <strong>chờ duyệt</strong> cho đến khi admin phê duyệt.
+      </div>
+    </div>
+
+    <!-- BƯỚC 2: Điền thông tin -->
+    <div class="role-step">
+      <div class="role-step-label"><span>2</span> Thông tin tài khoản</div>
+      <div class="reg-form-card">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Họ tên đầy đủ <span class="req">*</span></label>
+            <div class="input-icon-wrap">
+              <i class="ico fa-solid fa-id-card"></i>
+              <input type="text" name="full_name" class="form-control"
+                     value="{{ form_data.get('full_name','') }}"
+                     placeholder="Nguyễn Văn A" required minlength="2"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên đăng nhập <span class="req">*</span></label>
+            <div class="input-icon-wrap">
+              <i class="ico fa-solid fa-at"></i>
+              <input type="text" name="username" class="form-control"
+                     value="{{ form_data.get('username','') }}"
+                     placeholder="Chỉ dùng a-z, 0-9, dấu _" required minlength="3"
+                     oninput="checkUsername(this)"/>
+            </div>
+            <div id="usernameHint" class="form-hint"></div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email <span class="req">*</span></label>
+            <div class="input-icon-wrap">
+              <i class="ico fa-solid fa-envelope"></i>
+              <input type="email" name="email" class="form-control"
+                     value="{{ form_data.get('email','') }}"
+                     placeholder="email@sysvn.com" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Số điện thoại</label>
+            <div class="input-icon-wrap">
+              <i class="ico fa-solid fa-phone"></i>
+              <input type="tel" name="phone" class="form-control"
+                     value="{{ form_data.get('phone','') }}"
+                     placeholder="0901234567"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Mật khẩu <span class="req">*</span></label>
+            <div class="input-icon-wrap">
+              <i class="ico fa-solid fa-lock"></i>
+              <input type="password" name="password" id="pw1" class="form-control"
+                     placeholder="Tối thiểu 8 ký tự" required
+                     oninput="checkPwStrength(this.value)"/>
+              <button type="button" class="btn-eye" onclick="togglePw('pw1','eye1')">
+                <i class="fa-solid fa-eye" id="eye1"></i>
+              </button>
+            </div>
+            <div class="pw-strength">
+              <div class="pw-strength-bar"><div class="pw-strength-fill" id="pwBar"></div></div>
+              <div class="pw-reqs">
+                <span class="pw-req" id="req-len"><i class="fa-solid fa-circle-dot"></i> 8+ ký tự</span>
+                <span class="pw-req" id="req-upper"><i class="fa-solid fa-circle-dot"></i> Chữ hoa</span>
+                <span class="pw-req" id="req-lower"><i class="fa-solid fa-circle-dot"></i> Chữ thường</span>
+                <span class="pw-req" id="req-num"><i class="fa-solid fa-circle-dot"></i> Có số</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Xác nhận mật khẩu <span class="req">*</span></label>
+            <div class="input-icon-wrap">
+              <i class="ico fa-solid fa-lock-open"></i>
+              <input type="password" name="confirm" id="pw2" class="form-control"
+                     placeholder="Nhập lại mật khẩu" required
+                     oninput="checkConfirm()"/>
+              <button type="button" class="btn-eye" onclick="togglePw('pw2','eye2')">
+                <i class="fa-solid fa-eye" id="eye2"></i>
+              </button>
+            </div>
+            <div id="confirmHint" class="form-hint"></div>
+          </div>
+        </div>
+
+        <!-- Điều khoản -->
+        <div class="form-group" style="margin-bottom:20px">
+          <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:13px;color:#475569">
+            <input type="checkbox" id="agreeCheck" style="margin-top:2px;accent-color:#2563EB;width:15px;height:15px;flex-shrink:0" required/>
+            Tôi đã đọc và đồng ý với
+            <a href="#" style="color:#2563EB;font-weight:600">điều khoản sử dụng</a>
+            và
+            <a href="#" style="color:#2563EB;font-weight:600">chính sách bảo mật</a>
+            của SYS Việt Nam.
+          </label>
+        </div>
+
+        <button type="submit" class="btn-auth" id="submitBtn">
+          <i class="fa-solid fa-user-plus"></i> Tạo tài khoản
+        </button>
+
+        <div style="text-align:center;margin-top:16px;font-size:13px;color:#64748B">
+          Đã có tài khoản?
+          <a href="{{ url_for('login') }}" style="color:#2563EB;font-weight:600;text-decoration:none">Đăng nhập</a>
+        </div>
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<script>
+// Chon role card
+function selectRole(roleKey, el) {
+  document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input[type="radio"]').checked = true;
+  // Hien thong bao neu can duyet
+  const notice = document.getElementById('pendingNotice');
+  if (roleKey === 'admin' || roleKey === 'manager') {
+    notice.style.display = 'block';
+  } else {
+    notice.style.display = 'none';
+  }
+  // Cap nhat text nut submit
+  const btn = document.getElementById('submitBtn');
+  if (roleKey === 'admin' || roleKey === 'manager') {
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Gửi yêu cầu đăng ký';
+  } else {
+    btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Tạo tài khoản';
+  }
+}
+
+// Toggle password
+function togglePw(inputId, eyeId) {
+  const inp = document.getElementById(inputId);
+  const eye = document.getElementById(eyeId);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  eye.className = inp.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+}
+
+// Kiem tra username
+function checkUsername(inp) {
+  const hint = document.getElementById('usernameHint');
+  const v = inp.value;
+  if (!v) { hint.textContent = ''; return; }
+  if (v.length < 3) {
+    hint.style.color = '#EF4444'; hint.textContent = 'Tối thiểu 3 ký tự';
+  } else if (!/^[a-z0-9_]+$/.test(v)) {
+    hint.style.color = '#EF4444'; hint.textContent = 'Chỉ dùng a-z, 0-9, dấu _';
+  } else {
+    hint.style.color = '#10B981'; hint.textContent = '✓ Hợp lệ';
+  }
+}
+
+// Kiem tra do manh mat khau
+function checkPwStrength(pw) {
+  const reqLen   = pw.length >= 8;
+  const reqUpper = /[A-Z]/.test(pw);
+  const reqLower = /[a-z]/.test(pw);
+  const reqNum   = /[0-9]/.test(pw);
+  const setReq = (id, ok) => {
+    const el = document.getElementById(id);
+    el.classList.toggle('ok', ok);
+  };
+  setReq('req-len',   reqLen);
+  setReq('req-upper', reqUpper);
+  setReq('req-lower', reqLower);
+  setReq('req-num',   reqNum);
+  const score = [reqLen, reqUpper, reqLower, reqNum].filter(Boolean).length;
+  const bar   = document.getElementById('pwBar');
+  const colors = ['', '#EF4444', '#F59E0B', '#3B82F6', '#10B981'];
+  const widths = ['0%', '25%', '50%', '75%', '100%'];
+  bar.style.width = widths[score];
+  bar.style.background = colors[score];
+  checkConfirm();
+}
+
+// Kiem tra xac nhan mat khau
+function checkConfirm() {
+  const pw1 = document.getElementById('pw1').value;
+  const pw2 = document.getElementById('pw2').value;
+  const hint = document.getElementById('confirmHint');
+  if (!pw2) { hint.textContent = ''; return; }
+  if (pw1 === pw2) {
+    hint.style.color = '#10B981'; hint.textContent = '✓ Mật khẩu khớp';
+  } else {
+    hint.style.color = '#EF4444'; hint.textContent = '✗ Mật khẩu không khớp';
+  }
+}
+
+// Client-side validation truoc khi submit
+document.getElementById('regForm').addEventListener('submit', function(e) {
+  const pw1 = document.getElementById('pw1').value;
+  const pw2 = document.getElementById('pw2').value;
+  const agree = document.getElementById('agreeCheck').checked;
+
+  if (pw1 !== pw2) {
+    e.preventDefault();
+    alert('Mật khẩu xác nhận không khớp!');
+    return;
+  }
+  if (!agree) {
+    e.preventDefault();
+    alert('Vui lòng đồng ý với điều khoản sử dụng!');
+    return;
+  }
+  // Loading state
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...';
+});
+
+// Auto close alerts
+document.querySelectorAll('.alert').forEach(el => {
+  setTimeout(() => { el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, 6000);
+  el.querySelector('.alert-close')?.addEventListener('click', ()=>el.remove());
+});
+</script>
+</body>
+</html>

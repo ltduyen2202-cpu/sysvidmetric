@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_subtitle %}Quản lý chiến dịch Marketing{% endblock %}
+
+{% block content %}
+<div style="max-width:640px">
+<form method="POST">
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-bullhorn" style="color:var(--primary);margin-right:6px"></i>Thông tin chiến dịch</h3>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Tên chiến dịch <span class="req">*</span></label>
+        <input type="text" name="name" class="form-control" required
+               value="{{ campaign.name if campaign else '' }}" placeholder="Tên chiến dịch..."/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mô tả</label>
+        <textarea name="description" class="form-control" rows="3">{{ campaign.description if campaign else '' }}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Ngày bắt đầu</label>
+          <input type="date" name="start_date" class="form-control"
+                 value="{{ campaign.start_date.strftime('%Y-%m-%d') if campaign and campaign.start_date else '' }}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ngày kết thúc</label>
+          <input type="date" name="end_date" class="form-control"
+                 value="{{ campaign.end_date.strftime('%Y-%m-%d') if campaign and campaign.end_date else '' }}"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Ngân sách (đ)</label>
+          <input type="number" name="budget" class="form-control" step="1000000"
+                 value="{{ campaign.budget if campaign else '0' }}" min="0"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trạng thái</label>
+          <select name="status" class="form-control">
+            {% for val, label in campaign_statuses %}
+            <option value="{{ val }}" {% if campaign and campaign.status == val %}selected{% elif not campaign and val == 'planned' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px">
+    <button type="submit" class="btn btn-primary">
+      <i class="fa-solid fa-floppy-disk"></i>
+      {{ 'Cập nhật' if campaign else 'Thêm chiến dịch' }}
+    </button>
+    <a href="{{ url_for('campaigns') }}" class="btn btn-secondary">
+      <i class="fa-solid fa-xmark"></i> Hủy
+    </a>
+  </div>
+</form>
+</div>
+{% endblock %}

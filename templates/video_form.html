@@ -1,0 +1,767 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_subtitle %}Quản lý Video{% endblock %}
+
+{% block extra_css %}
+<style>
+/* === Score Card === */
+.score-ring-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.score-ring {
+  position: relative; width: 80px; height: 80px;
+}
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring-track { fill: none; stroke: #F1F5F9; stroke-width: 7; }
+.score-ring-fill  { fill: none; stroke-width: 7; stroke-linecap: round;
+                    transition: stroke-dashoffset .6s ease, stroke .3s; }
+.score-ring-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 800; color: var(--text);
+}
+.score-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-align: center; }
+.score-grade {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+}
+
+/* === Metric input highlight === */
+.metric-input-wrap { position: relative; }
+.metric-input-wrap .metric-icon {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  font-size: 13px; color: #CBD5E1;
+}
+.metric-input-wrap input { padding-left: 32px !important; }
+
+/* === Evaluation bars === */
+.eval-bar-row { margin-bottom: 14px; }
+.eval-bar-top {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;
+}
+.eval-bar-name { font-size: 13px; font-weight: 600; }
+.eval-bar-score { font-size: 13px; font-weight: 700; }
+.eval-bar-track {
+  height: 10px; background: #F1F5F9; border-radius: 999px; overflow: hidden;
+}
+.eval-bar-fill {
+  height: 100%; border-radius: 999px;
+  transition: width .7s cubic-bezier(.4,0,.2,1);
+}
+.eval-verdict {
+  font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4;
+}
+
+/* === URL preview === */
+.url-preview {
+  display: none; margin-top: 8px; padding: 10px 14px;
+  background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px;
+  font-size: 12px; color: #15803D; align-items: center; gap: 8px;
+}
+.url-preview.show { display: flex; }
+.url-preview.error { background: #FEF2F2; border-color: #FECACA; color: #B91C1C; }
+
+/* === Overall score box === */
+.overall-score-box {
+  background: linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%);
+  border: 1px solid #BFDBFE; border-radius: 14px; padding: 20px;
+  text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:960px">
+<form method="POST" id="videoForm">
+
+  <!-- ==== THÔNG TIN CƠ BẢN ==== -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-info-circle" style="color:var(--primary);margin-right:6px"></i>Thông tin cơ bản</h3>
+    </div>
+    <div class="card-body">
+
+      <!-- URL VIDEO - ô đầu tiên, nổi bật -->
+      <div class="form-group">
+        <label class="form-label">
+          <i class="fa-solid fa-link" style="color:var(--primary)"></i>
+          URL Video (TikTok / YouTube / Facebook / Instagram / Shopee)
+        </label>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1">
+            <input type="url" name="video_url" id="videoUrl" class="form-control"
+                   value="{{ video.video_url if video else '' }}"
+                   placeholder="https://www.tiktok.com/@user/video/123..."
+                   oninput="detectPlatform(this.value)"/>
+            <div class="url-preview" id="urlPreview">
+              <i class="fa-solid fa-circle-check"></i>
+              <span id="urlPreviewText"></span>
+            </div>
+          </div>
+        </div>
+        <div class="form-hint">
+          <i class="fa-solid fa-circle-info"></i>
+          Dán link video → nhập chỉ số thực từ nền tảng → hệ thống tự đánh giá hiệu quả
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tiêu đề video <span class="req">*</span></label>
+        <input type="text" name="title" class="form-control"
+               value="{{ video.title if video else '' }}" required placeholder="Nhập tiêu đề video..."/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mô tả / Caption</label>
+        <textarea name="description" id="descInput" class="form-control" rows="3"
+                  placeholder="Nội dung mô tả video, caption..."
+                  oninput="evalDescription()">{{ video.description if video else '' }}</textarea>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span class="form-hint">Mô tả càng chi tiết → điểm nội dung càng cao</span>
+          <span id="descCount" style="font-size:11px;color:var(--text-muted)">0 ký tự</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nền tảng <span class="req">*</span></label>
+          <select name="platform_id" id="platformSelect" class="form-control">
+            <option value="">-- Chọn nền tảng --</option>
+            {% for p in platforms %}
+            <option value="{{ p.id }}" data-name="{{ p.name }}"
+              {% if video and video.platform_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trạng thái</label>
+          <select name="status" class="form-control">
+            {% for val, label in video_statuses %}
+            <option value="{{ val }}"
+              {% if video and video.status == val %}selected
+              {% elif not video and val == 'draft' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sản phẩm liên kết</label>
+          <select name="product_id" class="form-control">
+            <option value="">-- Không liên kết --</option>
+            {% for p in products %}
+            <option value="{{ p.id }}" {% if video and video.product_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Chiến dịch</label>
+          <select name="campaign_id" class="form-control">
+            <option value="">-- Không có --</option>
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if video and video.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tags (phân cách bằng dấu phẩy)</label>
+          <input type="text" name="tags" id="tagsInput" class="form-control"
+                 value="{{ video.tags if video else '' }}"
+                 placeholder="viral, trending, review,..."
+                 oninput="evalTags()"/>
+          <div class="form-hint">Tags nhiều → tăng điểm khả năng tiếp cận</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Thời lượng (giây)</label>
+          <input type="number" name="duration" id="durationInput" class="form-control"
+                 value="{{ video.duration if video else '30' }}" min="5" max="180"
+                 oninput="recalcAll()"/>
+          <div class="form-hint">Video 15–60s thường hiệu quả nhất</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==== CHỈ SỐ HIỆU QUẢ ==== -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-bar" style="color:var(--success);margin-right:6px"></i>Nhập chỉ số thực từ nền tảng</h3>
+      <span style="font-size:12px;color:var(--text-muted)">Hệ thống tự tính toán & đánh giá</span>
+    </div>
+    <div class="card-body">
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label"><i class="fa-solid fa-eye" style="color:#3B82F6"></i> Lượt xem</label>
+          <div class="metric-input-wrap">
+            <i class="metric-icon fa-solid fa-eye"></i>
+            <input type="number" name="views" id="inp_views" class="form-control"
+                   value="{{ video.views if video else '0' }}" min="0" oninput="recalcAll()"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><i class="fa-solid fa-heart" style="color:#EF4444"></i> Lượt thích</label>
+          <div class="metric-input-wrap">
+            <i class="metric-icon fa-solid fa-heart"></i>
+            <input type="number" name="likes" id="inp_likes" class="form-control"
+                   value="{{ video.likes if video else '0' }}" min="0" oninput="recalcAll()"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><i class="fa-solid fa-comment" style="color:#10B981"></i> Bình luận</label>
+          <div class="metric-input-wrap">
+            <i class="metric-icon fa-solid fa-comment"></i>
+            <input type="number" name="comments" id="inp_comments" class="form-control"
+                   value="{{ video.comments if video else '0' }}" min="0" oninput="recalcAll()"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><i class="fa-solid fa-share-nodes" style="color:#F59E0B"></i> Lượt chia sẻ</label>
+          <div class="metric-input-wrap">
+            <i class="metric-icon fa-solid fa-share-nodes"></i>
+            <input type="number" name="shares" id="inp_shares" class="form-control"
+                   value="{{ video.shares if video else '0' }}" min="0" oninput="recalcAll()"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><i class="fa-solid fa-bookmark" style="color:#8B5CF6"></i> Lượt lưu</label>
+          <div class="metric-input-wrap">
+            <i class="metric-icon fa-solid fa-bookmark"></i>
+            <input type="number" name="saves" id="inp_saves" class="form-control"
+                   value="{{ video.saves if video else '0' }}" min="0" oninput="recalcAll()"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><i class="fa-solid fa-cart-shopping" style="color:#EE4D2D"></i> Đơn hàng</label>
+          <div class="metric-input-wrap">
+            <i class="metric-icon fa-solid fa-cart-shopping"></i>
+            <input type="number" name="orders" id="inp_orders" class="form-control"
+                   value="{{ video.orders if video else '0' }}" min="0" oninput="recalcAll()"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CTR (%)</label>
+          <input type="number" name="ctr" id="inp_ctr" class="form-control" step="0.01"
+                 value="{{ video.ctr if video else '0' }}" min="0" max="100" oninput="recalcAll()"/>
+          <div class="form-hint">Tỷ lệ nhấp vào link sản phẩm</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tỷ lệ chuyển đổi (%)</label>
+          <input type="number" name="conversion_rate" id="inp_conv" class="form-control" step="0.01"
+                 value="{{ video.conversion_rate if video else '0' }}" min="0" oninput="recalcAll()"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Doanh thu (đ)</label>
+          <input type="number" name="revenue" id="inp_revenue" class="form-control" step="1000"
+                 value="{{ video.revenue if video else '0' }}" min="0" oninput="recalcAll()"/>
+        </div>
+      </div>
+
+      <!-- Chỉ số tự tính -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="text-align:center;padding:12px;background:#F8FAFC;border-radius:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Tỷ lệ tương tác</div>
+          <div style="font-size:22px;font-weight:800;color:var(--primary)" id="calc_eng">0.00%</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:#F8FAFC;border-radius:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Like/View ratio</div>
+          <div style="font-size:22px;font-weight:800;color:#EF4444" id="calc_like">0.00%</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:#F8FAFC;border-radius:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Share/View ratio</div>
+          <div style="font-size:22px;font-weight:800;color:#F59E0B" id="calc_share">0.00%</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:#F8FAFC;border-radius:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Đơn/1000 views</div>
+          <div style="font-size:22px;font-weight:800;color:#10B981" id="calc_op1k">0.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==== ĐÁNH GIÁ TỰ ĐỘNG ==== -->
+  <div class="card" style="margin-bottom:20px" id="evalCard">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-star" style="color:#F59E0B;margin-right:6px"></i>Đánh giá hiệu quả tự động</h3>
+      <span style="font-size:12px;color:var(--text-muted)">Tính toán từ chỉ số thực · Cập nhật theo thời gian thực</span>
+    </div>
+    <div class="card-body">
+
+      <!-- Điểm tổng -->
+      <div class="overall-score-box" style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap">
+          <div class="score-ring-wrap">
+            <div class="score-ring">
+              <svg viewBox="0 0 80 80" width="80" height="80">
+                <circle class="score-ring-track" cx="40" cy="40" r="33"/>
+                <circle class="score-ring-fill" id="ring_overall" cx="40" cy="40" r="33"
+                        stroke="#2563EB" stroke-dasharray="207.3" stroke-dashoffset="207.3"/>
+              </svg>
+              <div class="score-ring-num" id="num_ring_overall">0</div>
+            </div>
+            <div class="score-label">Điểm tổng</div>
+            <span class="score-grade" id="grade_overall" style="background:#F1F5F9;color:#64748B">—</span>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <div id="overall_verdict" style="font-size:14px;color:var(--text);font-weight:600;margin-bottom:6px">
+              Nhập chỉ số để xem đánh giá
+            </div>
+            <div id="overall_detail" style="font-size:12px;color:var(--text-muted);line-height:1.6"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 tiêu chí đánh giá -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+        <!-- Hiệu suất tương tác -->
+        <div>
+          <div class="eval-bar-row">
+            <div class="eval-bar-top">
+              <span class="eval-bar-name">
+                <i class="fa-solid fa-heart" style="color:#EF4444;margin-right:6px"></i>
+                Hiệu suất tương tác
+              </span>
+              <span class="eval-bar-score" id="score_eng">0/100</span>
+            </div>
+            <div class="eval-bar-track">
+              <div class="eval-bar-fill" id="bar_eng" style="width:0%;background:#EF4444"></div>
+            </div>
+            <div class="eval-verdict" id="verdict_eng">Chưa có dữ liệu</div>
+          </div>
+
+          <!-- Hiệu suất lan truyền -->
+          <div class="eval-bar-row">
+            <div class="eval-bar-top">
+              <span class="eval-bar-name">
+                <i class="fa-solid fa-share-nodes" style="color:#F59E0B;margin-right:6px"></i>
+                Khả năng lan truyền (Viral)
+              </span>
+              <span class="eval-bar-score" id="score_viral">0/100</span>
+            </div>
+            <div class="eval-bar-track">
+              <div class="eval-bar-fill" id="bar_viral" style="width:0%;background:#F59E0B"></div>
+            </div>
+            <div class="eval-verdict" id="verdict_viral">Chưa có dữ liệu</div>
+          </div>
+
+          <!-- Hiệu suất thương mại -->
+          <div class="eval-bar-row">
+            <div class="eval-bar-top">
+              <span class="eval-bar-name">
+                <i class="fa-solid fa-cart-shopping" style="color:#EE4D2D;margin-right:6px"></i>
+                Hiệu suất thương mại (ROI)
+              </span>
+              <span class="eval-bar-score" id="score_commerce">0/100</span>
+            </div>
+            <div class="eval-bar-track">
+              <div class="eval-bar-fill" id="bar_commerce" style="width:0%;background:#EE4D2D"></div>
+            </div>
+            <div class="eval-verdict" id="verdict_commerce">Chưa có dữ liệu</div>
+          </div>
+        </div>
+
+        <div>
+          <!-- Chất lượng nội dung -->
+          <div class="eval-bar-row">
+            <div class="eval-bar-top">
+              <span class="eval-bar-name">
+                <i class="fa-solid fa-file-lines" style="color:#8B5CF6;margin-right:6px"></i>
+                Chất lượng nội dung
+              </span>
+              <span class="eval-bar-score" id="score_content">0/100</span>
+            </div>
+            <div class="eval-bar-track">
+              <div class="eval-bar-fill" id="bar_content" style="width:0%;background:#8B5CF6"></div>
+            </div>
+            <div class="eval-verdict" id="verdict_content">Nhập mô tả & tags để đánh giá</div>
+          </div>
+
+          <!-- Hiệu suất đầu ra (View rate) -->
+          <div class="eval-bar-row">
+            <div class="eval-bar-top">
+              <span class="eval-bar-name">
+                <i class="fa-solid fa-chart-line" style="color:#2563EB;margin-right:6px"></i>
+                Hiệu suất đầu ra (View rate)
+              </span>
+              <span class="eval-bar-score" id="score_reach">0/100</span>
+            </div>
+            <div class="eval-bar-track">
+              <div class="eval-bar-fill" id="bar_reach" style="width:0%;background:#2563EB"></div>
+            </div>
+            <div class="eval-verdict" id="verdict_reach">Chưa có dữ liệu</div>
+          </div>
+
+          <!-- Điểm tổng hợp các vòng nhỏ -->
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px">
+            {% set score_items = [
+              ('ring_eng','#EF4444','Tương tác'),
+              ('ring_viral','#F59E0B','Viral'),
+              ('ring_commerce','#EE4D2D','Thương mại'),
+              ('ring_content','#8B5CF6','Nội dung'),
+              ('ring_reach','#2563EB','Đầu ra'),
+            ] %}
+            {% for rid, col, lbl in score_items %}
+            <div class="score-ring-wrap">
+              <div class="score-ring" style="width:56px;height:56px">
+                <svg viewBox="0 0 80 80" width="56" height="56">
+                  <circle class="score-ring-track" cx="40" cy="40" r="33"/>
+                  <circle class="score-ring-fill" id="{{ rid }}" cx="40" cy="40" r="33"
+                          stroke="{{ col }}" stroke-dasharray="207.3" stroke-dashoffset="207.3"/>
+                </svg>
+                <div class="score-ring-num" id="num_{{ rid }}" style="font-size:13px">0</div>
+              </div>
+              <div class="score-label" style="font-size:10px">{{ lbl }}</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Gợi ý cải thiện -->
+      <div id="suggestions" style="margin-top:20px;display:none">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text)">
+          <i class="fa-solid fa-lightbulb" style="color:#F59E0B"></i> Gợi ý cải thiện
+        </div>
+        <div id="suggestion_list" style="display:flex;flex-direction:column;gap:7px"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Nút submit -->
+  <div style="display:flex;gap:12px">
+    <button type="submit" class="btn btn-primary">
+      <i class="fa-solid fa-floppy-disk"></i>
+      {{ 'Cập nhật video' if video else 'Thêm video' }}
+    </button>
+    <a href="{{ url_for('videos') }}" class="btn btn-secondary">
+      <i class="fa-solid fa-xmark"></i> Hủy
+    </a>
+  </div>
+</form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ================================================================
+// DETECT PLATFORM TỪ URL
+// ================================================================
+function detectPlatform(url) {
+  const preview = document.getElementById('urlPreview');
+  const previewText = document.getElementById('urlPreviewText');
+  const platSelect = document.getElementById('platformSelect');
+
+  if (!url) { preview.className = 'url-preview'; return; }
+
+  const platforms = {
+    'tiktok.com':    { name: 'TikTok',          key: 'tiktok' },
+    'youtube.com':   { name: 'YouTube Shorts',   key: 'youtube' },
+    'youtu.be':      { name: 'YouTube Shorts',   key: 'youtube' },
+    'facebook.com':  { name: 'Facebook Reels',   key: 'facebook' },
+    'instagram.com': { name: 'Instagram Reels',  key: 'instagram' },
+    'shopee.vn':     { name: 'Shopee Video',      key: 'shopee' },
+  };
+
+  let detected = null;
+  for (const [domain, info] of Object.entries(platforms)) {
+    if (url.includes(domain)) { detected = info; break; }
+  }
+
+  if (detected) {
+    preview.className = 'url-preview show';
+    previewText.textContent = `✓ Đã nhận diện: ${detected.name} — Nhập chỉ số thực từ trang quản lý nền tảng`;
+    // Auto chọn platform
+    for (const opt of platSelect.options) {
+      if (opt.dataset.name && opt.dataset.name.toLowerCase().includes(detected.key)) {
+        platSelect.value = opt.value; break;
+      }
+    }
+  } else if (url.startsWith('http')) {
+    preview.className = 'url-preview show error';
+    previewText.textContent = '⚠ Không nhận diện được nền tảng — vui lòng chọn thủ công';
+  } else {
+    preview.className = 'url-preview';
+  }
+}
+
+// ================================================================
+// TÍNH TOÁN & ĐÁNH GIÁ
+// ================================================================
+function getNum(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+
+function recalcAll() {
+  const views    = getNum('inp_views');
+  const likes    = getNum('inp_likes');
+  const comments = getNum('inp_comments');
+  const shares   = getNum('inp_shares');
+  const saves    = getNum('inp_saves');
+  const orders   = getNum('inp_orders');
+  const ctr      = getNum('inp_ctr');
+  const revenue  = getNum('inp_revenue');
+  const duration = getNum('durationInput');
+
+  // --- Chỉ số phụ ---
+  const engagement = views > 0 ? (likes+comments+shares+saves)/views*100 : 0;
+  const likeRate   = views > 0 ? likes/views*100  : 0;
+  const shareRate  = views > 0 ? shares/views*100 : 0;
+  const op1k       = views > 0 ? orders/views*1000 : 0;
+
+  document.getElementById('calc_eng').textContent   = engagement.toFixed(2) + '%';
+  document.getElementById('calc_like').textContent  = likeRate.toFixed(2) + '%';
+  document.getElementById('calc_share').textContent = shareRate.toFixed(2) + '%';
+  document.getElementById('calc_op1k').textContent  = op1k.toFixed(2);
+
+  // ----------------------------------------------------------------
+  // 1. HIỆU SUẤT TƯƠNG TÁC (engagement rate benchmark)
+  //    TikTok: tốt >= 6%, khá >= 3%, yếu < 1%
+  // ----------------------------------------------------------------
+  let scoreEng = 0, verdictEng = '';
+  if (views > 0) {
+    if      (engagement >= 10) { scoreEng = 95; verdictEng = `Xuất sắc! Tỷ lệ tương tác ${engagement.toFixed(2)}% — video đang viral mạnh.`; }
+    else if (engagement >= 6)  { scoreEng = 80; verdictEng = `Tốt. Tỷ lệ ${engagement.toFixed(2)}% vượt benchmark TikTok (6%). Nội dung hấp dẫn.`; }
+    else if (engagement >= 3)  { scoreEng = 60; verdictEng = `Khá. Tỷ lệ ${engagement.toFixed(2)}% ở mức trung bình. Cần cải thiện CTA.`; }
+    else if (engagement >= 1)  { scoreEng = 35; verdictEng = `Yếu. Tỷ lệ ${engagement.toFixed(2)}% thấp hơn benchmark. Nội dung chưa đủ hấp dẫn.`; }
+    else                        { scoreEng = 15; verdictEng = `Rất yếu. Tỷ lệ ${engagement.toFixed(2)}% — cần xem lại nội dung & thời điểm đăng.`; }
+  } else { verdictEng = 'Nhập lượt xem và tương tác để đánh giá.'; }
+
+  // ----------------------------------------------------------------
+  // 2. KHẢ NĂNG LAN TRUYỀN (viral score = share + save rate)
+  //    Share >= 2% = rất tốt, >= 1% = tốt
+  // ----------------------------------------------------------------
+  let scoreViral = 0, verdictViral = '';
+  if (views > 0) {
+    const viralRate = (shares + saves) / views * 100;
+    if      (viralRate >= 5)   { scoreViral = 95; verdictViral = `Viral mạnh! ${viralRate.toFixed(2)}% chia sẻ+lưu — video đang được lan truyền rộng rãi.`; }
+    else if (viralRate >= 3)   { scoreViral = 80; verdictViral = `Tốt. ${viralRate.toFixed(2)}% — video có tiềm năng viral cao.`; }
+    else if (viralRate >= 1.5) { scoreViral = 60; verdictViral = `Trung bình. ${viralRate.toFixed(2)}% — cần hook mạnh hơn ở đầu video.`; }
+    else if (viralRate >= 0.5) { scoreViral = 35; verdictViral = `Thấp. ${viralRate.toFixed(2)}% — video chưa tạo được động lực chia sẻ.`; }
+    else                        { scoreViral = 15; verdictViral = `Rất thấp. Thêm CTA rõ ràng: "Lưu lại xem sau", "Chia sẻ cho bạn bè".`; }
+  } else { verdictViral = 'Nhập dữ liệu để đánh giá.'; }
+
+  // ----------------------------------------------------------------
+  // 3. HIỆU SUẤT THƯƠNG MẠI
+  //    op1k >= 1 = tốt, revenue > 0 càng cao càng tốt
+  // ----------------------------------------------------------------
+  let scoreCommerce = 0, verdictCommerce = '';
+  if (views > 0) {
+    if (orders > 0 || revenue > 0) {
+      if      (op1k >= 2)    { scoreCommerce = 95; verdictCommerce = `Xuất sắc! ${op1k.toFixed(2)} đơn/1000 views — tỷ lệ chuyển đổi rất cao.`; }
+      else if (op1k >= 1)    { scoreCommerce = 80; verdictCommerce = `Tốt. ${op1k.toFixed(2)} đơn/1000 views — đạt benchmark thương mại.`; }
+      else if (op1k >= 0.5)  { scoreCommerce = 55; verdictCommerce = `Khá. ${op1k.toFixed(2)} đơn/1000 views — cần tối ưu link sản phẩm & CTA.`; }
+      else if (op1k > 0)     { scoreCommerce = 30; verdictCommerce = `Thấp. ${op1k.toFixed(2)} đơn/1000 views — xem lại trang sản phẩm & giá.`; }
+      else                    { scoreCommerce = 20; verdictCommerce = `Có doanh thu nhưng chưa có đơn hàng được ghi nhận.`; }
+    } else if (ctr > 0)      { scoreCommerce = 25; verdictCommerce = `CTR ${ctr}% nhưng chưa có đơn hàng. Kiểm tra landing page.`; }
+    else                      { scoreCommerce = 10; verdictCommerce = `Chưa có dữ liệu thương mại. Thêm link sản phẩm & theo dõi CTR.`; }
+  } else { verdictCommerce = 'Nhập dữ liệu để đánh giá.'; }
+
+  // ----------------------------------------------------------------
+  // 4. CHẤT LƯỢNG NỘI DUNG (mô tả + tags + thời lượng)
+  // ----------------------------------------------------------------
+  evalDescription();
+  evalTags();
+  const scoreContent = window._scoreContent || 0;
+  const verdictContent = window._verdictContent || 'Nhập mô tả & tags để đánh giá.';
+
+  // ----------------------------------------------------------------
+  // 5. HIỆU SUẤT ĐẦU RA — VIEW RATE (views so với benchmark)
+  //    TikTok video ngắn: 10K = tốt, 100K = rất tốt, 1M = viral
+  // ----------------------------------------------------------------
+  let scoreReach = 0, verdictReach = '';
+  if (views > 0) {
+    if      (views >= 1000000) { scoreReach = 100; verdictReach = `🔥 ${fmtNum(views)} views — Video VIRAL! Đạt ngưỡng triệu views.`; }
+    else if (views >= 500000)  { scoreReach = 90;  verdictReach = `Xuất sắc! ${fmtNum(views)} views — Hiệu suất lan truyền rất cao.`; }
+    else if (views >= 100000)  { scoreReach = 75;  verdictReach = `Rất tốt. ${fmtNum(views)} views — Nằm top 10% video TMĐT.`; }
+    else if (views >= 50000)   { scoreReach = 60;  verdictReach = `Tốt. ${fmtNum(views)} views — Trên trung bình ngành.`; }
+    else if (views >= 10000)   { scoreReach = 45;  verdictReach = `Trung bình. ${fmtNum(views)} views — Cần đẩy thêm qua quảng cáo hoặc collab.`; }
+    else if (views >= 1000)    { scoreReach = 25;  verdictReach = `Thấp. ${fmtNum(views)} views — Tối ưu giờ đăng & hashtag trending.`; }
+    else                        { scoreReach = 10;  verdictReach = `Rất thấp. ${fmtNum(views)} views — Video mới hoặc chưa được đề xuất.`; }
+  } else { verdictReach = 'Nhập lượt xem để đánh giá.'; }
+
+  // ----------------------------------------------------------------
+  // ĐIỂM TỔNG (trọng số)
+  // ----------------------------------------------------------------
+  const overall = Math.round(
+    scoreEng      * 0.25 +
+    scoreViral    * 0.20 +
+    scoreCommerce * 0.25 +
+    scoreContent  * 0.15 +
+    scoreReach    * 0.15
+  );
+
+  // --- Cập nhật UI ---
+  updateBar('eng',      scoreEng,      verdictEng);
+  updateBar('viral',    scoreViral,    verdictViral);
+  updateBar('commerce', scoreCommerce, verdictCommerce);
+  updateBar('content',  scoreContent,  verdictContent);
+  updateBar('reach',    scoreReach,    verdictReach);
+  updateOverall(overall);
+  buildSuggestions(scoreEng, scoreViral, scoreCommerce, scoreContent, scoreReach, views);
+}
+
+// ----------------------------------------------------------------
+// Đánh giá mô tả
+// ----------------------------------------------------------------
+function evalDescription() {
+  const desc  = document.getElementById('descInput')?.value || '';
+  const count = document.getElementById('descCount');
+  if (count) count.textContent = desc.length + ' ký tự';
+
+  let score = 0, verdict = '';
+  const len = desc.trim().length;
+  const hasEmoji = /[\u{1F300}-\u{1FAFF}]/u.test(desc);
+  const hasCTA   = /mua ngay|đặt hàng|link bio|bình luận|comment|dm|inbox|xem thêm|click/i.test(desc);
+
+  if      (len >= 200) score += 40; else if (len >= 100) score += 28;
+  else if (len >= 50)  score += 18; else if (len > 0)   score += 8;
+  if (hasEmoji) score += 15;
+  if (hasCTA)   score += 25;
+  if (len >= 100 && hasCTA && hasEmoji) score += 20; // bonus full
+  score = Math.min(score, 100);
+
+  const parts = [];
+  if (len < 50)   parts.push('mô tả quá ngắn (< 50 ký tự)');
+  if (!hasEmoji)  parts.push('thiếu emoji tạo cảm xúc');
+  if (!hasCTA)    parts.push('thiếu CTA (kêu gọi hành động)');
+
+  if (score >= 80)     verdict = `Nội dung tốt! ${len} ký tự, có CTA & emoji.`;
+  else if (score >= 50) verdict = `Khá. Có thể cải thiện: ${parts.join(', ')}.`;
+  else                  verdict = `Yếu. Cần bổ sung: ${parts.join(', ')}.`;
+
+  window._scoreContent  = score;
+  window._verdictContent = verdict;
+}
+
+// ----------------------------------------------------------------
+// Đánh giá tags
+// ----------------------------------------------------------------
+function evalTags() {
+  const tags = (document.getElementById('tagsInput')?.value || '').split(',').filter(t => t.trim());
+  let bonus = 0;
+  if      (tags.length >= 8) bonus = 25;
+  else if (tags.length >= 5) bonus = 18;
+  else if (tags.length >= 3) bonus = 10;
+  else if (tags.length >= 1) bonus = 5;
+
+  const base = window._scoreContent || 0;
+  window._scoreContent = Math.min(100, base - (window._tagBonus || 0) + bonus);
+  window._tagBonus = bonus;
+}
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+function fmtNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return (n/1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function getColor(score) {
+  if (score >= 80) return '#10B981';
+  if (score >= 60) return '#3B82F6';
+  if (score >= 40) return '#F59E0B';
+  return '#EF4444';
+}
+
+function getGrade(score) {
+  if (score >= 90) return ['A+', '#DCFCE7', '#15803D'];
+  if (score >= 80) return ['A',  '#DCFCE7', '#15803D'];
+  if (score >= 70) return ['B+', '#DBEAFE', '#1D4ED8'];
+  if (score >= 60) return ['B',  '#DBEAFE', '#1D4ED8'];
+  if (score >= 50) return ['C+', '#FEF9C3', '#A16207'];
+  if (score >= 40) return ['C',  '#FEF9C3', '#A16207'];
+  if (score >= 30) return ['D',  '#FEE2E2', '#B91C1C'];
+  return ['F', '#FEE2E2', '#B91C1C'];
+}
+
+function updateRing(id, score) {
+  const r = 33, circ = 2 * Math.PI * r;
+  const fill = document.getElementById(id);
+  const num  = document.getElementById('num_' + id);
+  if (!fill) return;
+  const offset = circ - (score / 100) * circ;
+  fill.style.strokeDashoffset = offset;
+  fill.style.stroke = getColor(score);
+  if (num) num.textContent = score;
+}
+
+function updateBar(key, score, verdict) {
+  const bar  = document.getElementById('bar_'     + key);
+  const sc   = document.getElementById('score_'   + key);
+  const vrd  = document.getElementById('verdict_' + key);
+  if (bar) { bar.style.width = score + '%'; bar.style.background = getColor(score); }
+  if (sc)  sc.textContent  = score + '/100';
+  if (vrd) vrd.textContent = verdict;
+  updateRing('ring_' + key, score);
+}
+
+function updateOverall(score) {
+  // Cap nhat vong tron tong
+  const r = 33, circ = 2 * Math.PI * r;
+  const fill = document.getElementById('ring_overall');
+  const num  = document.getElementById('num_ring_overall');
+  if (fill) {
+    const offset = circ - (score / 100) * circ;
+    fill.style.strokeDashoffset = offset;
+    fill.style.stroke = getColor(score);
+  }
+  if (num) num.textContent = score;
+
+  const [grade, bg, col] = getGrade(score);
+  const gradeEl = document.getElementById('grade_overall');
+  if (gradeEl) { gradeEl.textContent = grade; gradeEl.style.background = bg; gradeEl.style.color = col; }
+
+  const vm = document.getElementById('overall_verdict');
+  if (!vm) return;
+  if      (score >= 90) vm.textContent = 'Video xuất sắc! Đang hoạt động rất hiệu quả trên tất cả tiêu chí.';
+  else if (score >= 80) vm.textContent = 'Video tốt. Hiệu suất trên trung bình — tiếp tục duy trì chiến lược này.';
+  else if (score >= 70) vm.textContent = 'Video khá. Có một vài điểm cần cải thiện để tối ưu hơn.';
+  else if (score >= 60) vm.textContent = 'Video trung bình. Cần xem lại nội dung & chiến lược phân phối.';
+  else if (score >= 40) vm.textContent = 'Video yếu. Nhiều tiêu chí chưa đạt — cần cải thiện toàn diện.';
+  else                  vm.textContent = 'Video rất yếu. Cân nhắc làm lại nội dung từ đầu.';
+}
+    40: 'Video yếu. Nhiều tiêu chí chưa đạt — cần cải thiện toàn diện.',
+     0: 'Video rất yếu. Cân nhắc làm lại nội dung từ đầu.',
+  };
+  const vm = document.getElementById('overall_verdict');
+  for (const [min, text] of Object.entries(verdicts).reverse()) {
+    if (score >= parseInt(min)) { if (vm) vm.textContent = text; break; }
+  }
+}
+
+function buildSuggestions(sEng, sViral, sComm, sCont, sReach, views) {
+  const tips = [];
+  if (sEng < 60)    tips.push({ icon:'fa-heart', col:'#EF4444', text:'Thêm câu hỏi vào caption để tăng bình luận. Ví dụ: "Bạn thích màu nào hơn?"' });
+  if (sViral < 60)  tips.push({ icon:'fa-share-nodes', col:'#F59E0B', text:'Thêm CTA "Lưu lại để không quên" hoặc "Chia sẻ cho bạn bè" cuối video.' });
+  if (sComm < 50)   tips.push({ icon:'fa-cart-shopping', col:'#EE4D2D', text:'Đặt link sản phẩm nổi bật trong bio. Nhắc "Link mua hàng trong bio" trong video.' });
+  if (sCont < 60)   tips.push({ icon:'fa-file-lines', col:'#8B5CF6', text:'Viết caption 100-200 ký tự, kèm emoji và hashtag trending (5-10 tags).' });
+  if (sReach < 50)  tips.push({ icon:'fa-clock', col:'#2563EB', text:'Đăng lúc 19h-22h (giờ vàng). Dùng trending sound/nhạc để tăng đề xuất.' });
+  if (views > 0 && views < 10000) tips.push({ icon:'fa-bullhorn', col:'#10B981', text:'Chạy quảng cáo TikTok Ads với ngân sách nhỏ để boost video lên For You Page.' });
+
+  const box  = document.getElementById('suggestions');
+  const list = document.getElementById('suggestion_list');
+  if (!box || !list) return;
+  if (tips.length === 0) { box.style.display = 'none'; return; }
+
+  box.style.display = 'block';
+  list.innerHTML = tips.map(t => `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;
+                background:#FAFBFF;border-radius:8px;border:1px solid #E2E8F0">
+      <i class="fa-solid ${t.icon}" style="color:${t.col};margin-top:2px;flex-shrink:0"></i>
+      <span style="font-size:12px;line-height:1.5">${t.text}</span>
+    </div>
+  `).join('');
+}
+
+// Chay ngay khi load trang (neu co du lieu cu)
+window.addEventListener('DOMContentLoaded', () => {
+  recalcAll();
+  evalDescription();
+  evalTags();
+  detectPlatform(document.getElementById('videoUrl')?.value || '');
+});
+</script>
+{% endblock %}

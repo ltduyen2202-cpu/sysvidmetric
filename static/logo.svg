@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Nền gradient -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1D4ED8"/>
+      <stop offset="100%" style="stop-color:#2563EB"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#60A5FA"/>
+      <stop offset="100%" style="stop-color:#93C5FD"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Nền bo góc -->
+  <rect width="200" height="200" rx="40" ry="40" fill="url(#bg)"/>
+
+  <!-- Thanh trang trí -->
+  <rect x="20" y="148" width="160" height="4" rx="2" fill="url(#accent)" opacity="0.6"/>
+
+  <!-- Chữ SYS to -->
+  <text x="100" y="118"
+        font-family="Arial Black, Arial, sans-serif"
+        font-size="72"
+        font-weight="900"
+        fill="white"
+        text-anchor="middle"
+        letter-spacing="-2">SYS</text>
+
+  <!-- Chữ VidMetric nhỏ -->
+  <text x="100" y="160"
+        font-family="Arial, sans-serif"
+        font-size="22"
+        font-weight="600"
+        fill="url(#accent)"
+        text-anchor="middle"
+        letter-spacing="3">VidMetric</text>
+</svg>

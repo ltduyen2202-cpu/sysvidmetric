@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }}{% endblock %}
+{% block page_title %}Chi tiết chiến dịch{% endblock %}
+{% block page_subtitle %}{{ campaign.name }}{% endblock %}
+
+{% block header_actions %}
+  {% if user and user.is_manager() %}
+  <a href="{{ url_for('campaign_edit', cid=campaign.id) }}" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-pen"></i> Chỉnh sửa
+  </a>
+  {% endif %}
+  <a href="{{ url_for('campaigns') }}" class="btn btn-secondary btn-sm">
+    <i class="fa-solid fa-arrow-left"></i> Quay lại
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="grid-2" style="margin-bottom:20px">
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-bullhorn" style="color:var(--primary);margin-right:6px"></i>Thông tin chiến dịch</h3>
+      {% if campaign.status == 'running' %}
+        <span class="badge badge-success">Đang chạy</span>
+      {% elif campaign.status == 'planned' %}
+        <span class="badge badge-info">Lên kế hoạch</span>
+      {% else %}
+        <span class="badge badge-secondary">Kết thúc</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if campaign.description %}
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">{{ campaign.description }}</p>
+      {% endif %}
+      <table style="width:100%;font-size:13px">
+        <tr><td style="color:var(--text-muted);padding:6px 0;width:40%">Ngày bắt đầu</td>
+            <td style="font-weight:600">{{ campaign.start_date.strftime('%d/%m/%Y') if campaign.start_date else '—' }}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Ngày kết thúc</td>
+            <td style="font-weight:600">{{ campaign.end_date.strftime('%d/%m/%Y') if campaign.end_date else '—' }}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Ngân sách</td>
+            <td style="font-weight:600">{{ '{:,.0f}'.format(campaign.budget).replace(',','.') }} đ</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="stats-grid" style="grid-template-columns:1fr 1fr;align-content:start">
+    <div class="stat-card">
+      <div class="stat-card-top">
+        <span class="stat-card-label">Video</span>
+        <div class="stat-card-icon blue"><i class="fa-solid fa-film"></i></div>
+      </div>
+      <div class="stat-card-value">{{ camp_videos|length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-top">
+        <span class="stat-card-label">Lượt xem</span>
+        <div class="stat-card-icon green"><i class="fa-solid fa-eye"></i></div>
+      </div>
+      <div class="stat-card-value">{{ '{:,}'.format(total_views).replace(',','.') }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-top">
+        <span class="stat-card-label">Đơn hàng</span>
+        <div class="stat-card-icon orange"><i class="fa-solid fa-cart-shopping"></i></div>
+      </div>
+      <div class="stat-card-value">{{ '{:,}'.format(total_orders).replace(',','.') }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-top">
+        <span class="stat-card-label">Doanh thu</span>
+        <div class="stat-card-icon purple"><i class="fa-solid fa-sack-dollar"></i></div>
+      </div>
+      <div class="stat-card-value" style="font-size:18px">
+        {{ '{:,.0f}'.format(total_rev).replace(',','.') }} đ
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Video trong chien dich -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-film" style="color:var(--success);margin-right:6px"></i>Danh sách video trong chiến dịch</h3>
+    <span style="font-size:12px;color:var(--text-muted)">{{ camp_videos|length }} video</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Video</th>
+          <th>Nền tảng</th>
+          <th class="num">Lượt xem</th>
+          <th class="num">Tương tác%</th>
+          <th class="num">Đơn hàng</th>
+          <th class="num">Doanh thu</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in camp_videos %}
+        <tr>
+          <td>
+            <a href="{{ url_for('video_detail', vid=v.id) }}"
+               style="font-weight:600;color:var(--text);text-decoration:none">{{ v.title }}</a>
+          </td>
+          <td>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px">
+              <span style="width:8px;height:8px;border-radius:50%;background:{{v.platform.color if v.platform else '#999'}}"></span>
+              {{ v.platform.name if v.platform else '—' }}
+            </span>
+          </td>
+          <td class="num">{{ '{:,}'.format(v.views).replace(',','.') }}</td>
+          <td class="num">{{ v.engagement_rate }}%</td>
+          <td class="num">{{ '{:,}'.format(v.orders).replace(',','.') }}</td>
+          <td class="num">{{ '{:,.0f}'.format(v.revenue).replace(',','.') }} đ</td>
+          <td>
+            {% if v.status == 'published' %}
+              <span class="badge badge-success">Đã đăng</span>
+            {% elif v.status == 'draft' %}
+              <span class="badge badge-warning">Bản nháp</span>
+            {% else %}
+              <span class="badge badge-secondary">Lưu trữ</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">
+          <div class="empty-state"><i class="fa-solid fa-film"></i><h4>Chưa có video</h4></div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
