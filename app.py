@@ -1217,32 +1217,37 @@ def analytics_export():
     # ============================================================
     # Sheet 2: Chi tiết theo ngày
     # ============================================================
-    ws2 = wb.create_sheet('Chi tiết theo ngày')
-    ws2.merge_cells('A1:F1')
-    ws2['A1'] = f'CHI TIẾT THEO NGÀY — {d_from.strftime("%d/%m/%Y")} đến {d_to.strftime("%d/%m/%Y")}'
-    ws2['A1'].font = TITLE_FONT; ws2['A1'].alignment = ctr
-    ws2['A1'].fill = PatternFill('solid', fgColor='F0FDF4')
-
-    set_hdr(ws2, 3, ['Ngày','Lượt xem','Lượt thích','Bình luận','Chia sẻ','Đơn hàng'])
-    for i,w in enumerate([14,14,13,13,13,13],1):
-        ws2.column_dimensions[get_column_letter(i)].width = w
-
-    row = 4
-    d = d_from
+    ws2 = wb.create_sheet('Chi tiet theo ngay')
+    all_plats_ex = Platform.query.filter_by(status='active').all()
+    merge_end = 1 + len(all_plats_ex) * 3 + 1
+    ws2.merge_cells(start_row=1,start_column=1,end_row=1,end_column=merge_end)
+    ws2.cell(row=1,column=1).value = 'CHI TIET THEO NGAY - ' + d_from.strftime('%d/%m/%Y') + ' den ' + d_to.strftime('%d/%m/%Y')
+    ws2.cell(row=1,column=1).font = TITLE_FONT
+    ws2.cell(row=1,column=1).alignment = ctr
+    ws2.cell(row=1,column=1).fill = PatternFill('solid', fgColor='F0FDF4')
+    # Header dong 2
+    h2 = ['Ngay', 'Tong views']
+    for plat in all_plats_ex:
+        h2 += [plat.name + ' views', plat.name + ' orders', plat.name + ' revenue']
+    set_hdr(ws2, 2, h2)
+    for i in range(len(h2)):
+        ws2.column_dimensions[get_column_letter(i+1)].width = 15
+    # Du lieu
+    row = 3; d = d_from
     while d <= d_to:
-        stats = VideoStat.query.filter(VideoStat.date == d).all()
-        set_row(ws2, row, [
-            d.strftime('%d/%m/%Y'),
-            sum(s.views for s in stats),
-            sum(s.likes for s in stats),
-            sum(s.comments for s in stats),
-            sum(s.shares for s in stats),
-            sum(s.orders for s in stats),
-        ])
+        tv = db.session.query(func.sum(VideoStat.views)).filter(VideoStat.date==d).scalar() or 0
+        row_data = [d.strftime('%d/%m/%Y'), int(tv)]
+        for plat in all_plats_ex:
+            vids = [v.id for v in Video.query.filter_by(platform_id=plat.id).all()]
+            sv = db.session.query(func.sum(VideoStat.views)).filter(VideoStat.video_id.in_(vids), VideoStat.date==d).scalar() or 0 if vids else 0
+            so = db.session.query(func.sum(VideoStat.orders)).filter(VideoStat.video_id.in_(vids), VideoStat.date==d).scalar() or 0 if vids else 0
+            sr = round(sum(v.revenue for v in Video.query.filter_by(platform_id=plat.id).all())/30) if vids else 0
+            row_data += [int(sv), int(so), int(sr)]
+        set_row(ws2, row, row_data)
         d += timedelta(days=1); row += 1
 
     # ============================================================
-    # Sheet 3: Danh sách video
+    # Sheet 3: Danh sach video
     # ============================================================
     ws3 = wb.create_sheet('Danh sách video')
     ws3.merge_cells('A1:K1')
@@ -1271,28 +1276,41 @@ def analytics_export():
     # ============================================================
     # Sheet 4: Hiệu suất theo tuần
     # ============================================================
-    ws4 = wb.create_sheet('Theo tuần')
-    ws4.merge_cells('A1:F1')
-    ws4['A1'] = f'HIỆU SUẤT THEO TUẦN — {d_from.strftime("%d/%m/%Y")} đến {d_to.strftime("%d/%m/%Y")}'
-    ws4['A1'].font = TITLE_FONT; ws4['A1'].alignment = ctr
-    ws4['A1'].fill = PatternFill('solid', fgColor='F5F3FF')
-    set_hdr(ws4, 3, ['Tuần','Từ ngày','Đến ngày','Lượt xem','Đơn hàng','Doanh thu (đ)'])
-    for i,w in enumerate([8,14,14,14,14,18],1):
-        ws4.column_dimensions[get_column_letter(i)].width = w
+    ws4 = wb.create_sheet('Theo tuan - Nen tang')
+    all_plats_ex = Platform.query.filter_by(status='active').all()
+    merge_end4 = 2 + len(all_plats_ex) * 2 + 1
+    ws4.merge_cells(start_row=1,start_column=1,end_row=1,end_column=merge_end4)
+    ws4.cell(row=1,column=1).value = 'HIEU SUAT THEO TUAN - ' + d_from.strftime('%d/%m/%Y') + ' den ' + d_to.strftime('%d/%m/%Y')
+    ws4.cell(row=1,column=1).font = TITLE_FONT
+    ws4.cell(row=1,column=1).alignment = ctr
+    ws4.cell(row=1,column=1).fill = PatternFill('solid', fgColor='F5F3FF')
+    # Header
+    h4 = ['Tuan', 'Tu ngay', 'Den ngay']
+    for plat in all_plats_ex:
+        h4 += [plat.name + ' views', plat.name + ' orders']
+    set_hdr(ws4, 2, h4)
+    for i in range(len(h4)):
+        ws4.column_dimensions[get_column_letter(i+1)].width = 15
 
-    week_num = 1; row = 4; d = d_from
+    week_num = 1; row = 3; d = d_from
     while d <= d_to:
         wend = min(d + timedelta(days=6), d_to)
-        stats = VideoStat.query.filter(VideoStat.date >= d, VideoStat.date <= wend).all()
-        wv = sum(s.views for s in stats)
-        wo = sum(s.orders for s in stats)
-        # doanh thu theo tuan (tu Video.revenue trung binh)
-        vid_ids_week = list(set(s.video_id for s in stats))
-        wr = sum(Video.query.get(vid).revenue for vid in vid_ids_week if Video.query.get(vid))
-        set_row(ws4, row, [f'Tuần {week_num}', d.strftime('%d/%m/%Y'), wend.strftime('%d/%m/%Y'), wv, wo, wr])
+        row_data = ['Tuan ' + str(week_num), d.strftime('%d/%m/%Y'), wend.strftime('%d/%m/%Y')]
+        for plat in all_plats_ex:
+            vids = [v.id for v in Video.query.filter_by(platform_id=plat.id).all()]
+            wv = db.session.query(func.sum(VideoStat.views)).filter(
+                VideoStat.video_id.in_(vids),
+                VideoStat.date >= d, VideoStat.date <= wend
+            ).scalar() or 0 if vids else 0
+            wo = db.session.query(func.sum(VideoStat.orders)).filter(
+                VideoStat.video_id.in_(vids),
+                VideoStat.date >= d, VideoStat.date <= wend
+            ).scalar() or 0 if vids else 0
+            row_data += [int(wv), int(wo)]
+        set_row(ws4, row, row_data)
         d += timedelta(days=7); week_num += 1; row += 1
 
-    # --- Xuất file ---
+    # --- Xuat file ---
     buf = io.BytesIO()
     wb.save(buf); buf.seek(0)
 
