@@ -1707,10 +1707,14 @@ def api_chart_platform():
 
 
 # ---------------------------------------------------------------------------
-# Khoi tao DB va chay app
+# Khoi tao DB
 # ---------------------------------------------------------------------------
 with app.app_context():
     db.create_all()
+    # Tu dong seed neu chua co du lieu
+    if User.query.count() == 0:
+        from seed import seed
+        seed()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -4,15 +4,20 @@ Chay: python seed.py
 """
 from datetime import date, datetime, timedelta
 import random
-from app import app
+
+try:
+    from app import app
+except ImportError:
+    app = None
+
 from model import (db, User, Platform, Category, Product,
                    Campaign, Video, VideoStat,
                    VIDEO_PUBLISHED, VIDEO_ARCHIVED, VIDEO_DRAFT,
                    CAMPAIGN_PLANNED, CAMPAIGN_RUNNING, CAMPAIGN_ENDED)
 
-def seed():
-    with app.app_context():
-        db.drop_all()
+def seed(flask_app=None):
+    _app = flask_app or app
+    with _app.app_context():
         db.create_all()
 
         # ---- Users ----
@@ -200,4 +205,5 @@ def seed():
 
 
 if __name__ == '__main__':
-    seed()
+    from app import app as flask_app
+    seed(flask_app)

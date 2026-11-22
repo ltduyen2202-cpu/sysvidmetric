@@ -2,10 +2,14 @@ services:
   - type: web
     name: sysvidmetric
     env: python
-    buildCommand: pip install -r requirements.txt && python seed.py
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: SECRET_KEY
         value: sys-vidmetric-production-2026-secret
+      - key: FLASK_DEBUG
+        value: false
